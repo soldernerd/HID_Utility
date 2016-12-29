@@ -1,0 +1,6 @@
+bin/*
+
+obj/*
+Backup/*
+.git/*
+.vs/*
