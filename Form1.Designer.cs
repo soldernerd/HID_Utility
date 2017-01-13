@@ -110,7 +110,8 @@ namespace HID_PnP_Demo
             // ReadWriteThread
             // 
             this.ReadWriteThread.WorkerReportsProgress = true;
-            this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
+            //this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
+            this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(myHidUtility.ReadWriteThread_DoWork);
             // 
             // FormUpdateTimer
             // 
