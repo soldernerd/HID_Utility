@@ -1,7 +1,7 @@
 
 using System;
 //using System.Collections.Generic;
-//using System.ComponentModel;
+using System.ComponentModel;
 //using System.Data;
 //using System.Drawing;
 //using System.Text;
@@ -17,8 +17,8 @@ namespace HID_PnP_Demo
 {
     public partial class Form1 : Form
     {
-
-        String DeviceIDToFind = "Vid_04d8&Pid_003f";
+        String DeviceIDToFind = "Vid_04d8&Pid_0054";
+        //String DeviceIDToFind = "Vid_04d8&Pid_003f";
         //String DeviceIDToFind = "Vid_04D9&Pid_1603";
         HidUtility myHidUtility = new HidUtility();
 
@@ -65,7 +65,7 @@ namespace HID_PnP_Demo
 
         //Variables used by the application/form updates.
         //bool PushbuttonPressed = false;		//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
-        bool ToggleLEDsPending = false;		//Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
+        //bool ToggleLEDsPending = false;		//Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
         //Globally Unique Identifier (GUID) for HID class devices.  Windows uses GUIDs to identify things.
         Guid InterfaceClassGuid = new Guid(0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30); 
 	    //--------------- End of Global Varibles ------------------
@@ -208,10 +208,11 @@ namespace HID_PnP_Demo
         {
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-            ToggleLEDsPending = true;	//Will get used asynchronously by the ReadWriteThread
+            //ToggleLEDsPending = true;	//Will get used asynchronously by the ReadWriteThread
+            myHidUtility.setToggleLEDsPending();
             //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	
+
         }
 
 
@@ -264,7 +265,8 @@ namespace HID_PnP_Demo
                     PushbuttonState_lbl.Text = "Pushbutton State: Not Pressed";		//Update the pushbutton state text label on the form, so the user can see the result 
                 else
                     PushbuttonState_lbl.Text = "Pushbutton State: Pressed";			//Update the pushbutton state text label on the form, so the user can see the result 
-
+                if(myHidUtility.getToggleLEDsPending())
+                    PushbuttonState_lbl.Text += ", LED toggle pending";
                 //Update the ANxx/POT Voltage indicator value (progressbar)
                 progressBar1.Value = (int) myHidUtility.getADCValue();
             }
@@ -280,6 +282,11 @@ namespace HID_PnP_Demo
         private void label1_Click(object sender, EventArgs e)
         {
 
+        }
+
+        public void ReadWriteThread_DoWork(object sender, DoWorkEventArgs e)
+        {
+            myHidUtility.ReadWriteThread_DoWork(sender, e);
         }
 
 

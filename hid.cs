@@ -870,6 +870,16 @@ namespace hid
             return PushbuttonPressed;
         }
 
+        public void setToggleLEDsPending()
+        {
+            ToggleLEDsPending = true;
+        }
+
+        public bool getToggleLEDsPending()
+        {
+            return ToggleLEDsPending;
+        }
+
         //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
         //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
