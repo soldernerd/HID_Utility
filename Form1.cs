@@ -13,19 +13,15 @@ using System.Runtime.InteropServices;
 using hid;
 
 
+
+
 namespace HID_PnP_Demo
 {
+
+    
+
     public partial class Form1 : Form
     {
-        String DeviceIDToFind = "Vid_04d8&Pid_0054";
-        //String DeviceIDToFind = "Vid_04d8&Pid_003f";
-        //String DeviceIDToFind = "Vid_04D9&Pid_1603";
-        HidUtility myHidUtility = new HidUtility();
-
-
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-
         //Constant definitions from setupapi.h, which we aren't allowed to include directly since this is C#
         //internal const uint DIGCF_PRESENT = 0x02;
         //internal const uint DIGCF_DEVICEINTERFACE = 0x10;
@@ -42,6 +38,90 @@ namespace HID_PnP_Demo
         internal const uint ERROR_NO_MORE_ITEMS = 0x00000103;
         internal const uint SPDRP_HARDWAREID = 0x00000001;
 
+        HidUtility myHidUtility;
+
+        //Variables used by the application/form updates.
+        byte lastCommand = 0x81;
+        bool waitingForDevice = false;
+        bool PushbuttonPressed = false;     //Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+        bool ToggleLEDsPending = false;     //Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
+        uint ADCValue = 0;			//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+
+        String DeviceIDToFind = "Vid_04d8&Pid_0054";
+        //String DeviceIDToFind = "Vid_04d8&Pid_003f";
+        //String DeviceIDToFind = "Vid_04D9&Pid_1603";
+        
+
+        // Create a method for a delegate.
+        public bool sendPacket(ref byte[] outBuffer)
+        {
+            if (ToggleLEDsPending == true)
+            {
+                outBuffer[0] = 0;               //The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
+                outBuffer[1] = 0x80;            //0x80 is the "Toggle LED(s)" command in the firmware
+                for (uint i = 2; i < 65; i++)
+                {
+                    outBuffer[i] = 0xFF;
+                }
+                ToggleLEDsPending = false;
+            }
+            else if (lastCommand==0x81)
+            {
+                outBuffer[0] = 0x00;    //The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
+                outBuffer[1] = 0x37;    //READ_POT command (see the firmware source code), gets 10-bit ADC Value
+                                        //Initialize the rest of the 64-byte packet to "0xFF".  Binary '1' bits do not use as much power, and do not cause as much EMI
+                                        //when they move across the USB cable.  USB traffic is "NRZI" encoded, where '1' bits do not cause the D+/D- signals to toggle states.
+                                        //This initialization is not strictly necessary however.
+                for (uint i = 2; i < 65; i++)
+                {
+                    outBuffer[i] = 0xFF;
+                }
+                lastCommand = 0x37;
+
+            }
+            else
+            {
+                //Get the pushbutton state from the microcontroller firmware.
+                outBuffer[0] = 0x00;           //The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
+                outBuffer[1] = 0x81;        //0x81 is the "Get Pushbutton State" command in the firmware
+                for (uint i = 2; i < 65; i++)
+                {
+                    outBuffer[i] = 0xFF;
+                }
+                lastCommand = 0x81;
+            }
+            return true;
+        }
+
+        public void packetSent(bool success)
+        {
+            waitingForDevice = success;
+        }
+
+        public bool receivePacket()
+        {
+            return waitingForDevice;
+        }
+
+        public void packetReceived(ref byte[] inBuffer)
+        {
+            if (inBuffer[1] == 0x37)
+            {
+                ADCValue = (uint)(inBuffer[3] << 8) + inBuffer[2];  //Need to reformat the data from two unsigned chars into one unsigned int.
+            }
+            if (inBuffer[1] == 0x81)
+            {
+                if (inBuffer[2] == 0x01)
+                {
+                    PushbuttonPressed = false;
+                }
+                if (inBuffer[2] == 0x00)
+                {
+                    PushbuttonPressed = true;
+                }   
+            }
+        }
+          
         internal struct DEV_BROADCAST_DEVICEINTERFACE
         {
             internal uint dbcc_size;            //DWORD
@@ -79,7 +159,16 @@ namespace HID_PnP_Demo
         public unsafe Form1()
         {
             InitializeComponent();
-            
+
+            // Instantiate the delegates.
+            sendPacket_delegate sendPacket_handler = sendPacket;
+            packetSent_delegate packetSent_handler = packetSent;
+            receivePacket_delegate receivePacket_handler = receivePacket;
+            packetReceived_delegate packetReceived_handler = packetReceived;
+
+            //Get an instance of HidUtility
+            myHidUtility = new HidUtility(sendPacket_handler, packetSent_handler, receivePacket_handler, packetReceived_handler);
+
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
             //Additional constructor code
@@ -208,8 +297,8 @@ namespace HID_PnP_Demo
         {
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
             //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-            //ToggleLEDsPending = true;	//Will get used asynchronously by the ReadWriteThread
-            myHidUtility.setToggleLEDsPending();
+            ToggleLEDsPending = true;	//Will get used asynchronously by the ReadWriteThread
+            //myHidUtility.setToggleLEDsPending();
             //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -248,8 +337,8 @@ namespace HID_PnP_Demo
                 }
 
                 PushbuttonState_lbl.Text = "Pushbutton State: Unknown";
-                myHidUtility.setADCValue(0);
-                //ADCValue = 0;
+                //myHidUtility.setADCValue(0);
+                ADCValue = 0;
                 progressBar1.Value = 0;
             }
             if ((myHidUtility.getAttachedState() == false) && (myHidUtility.getAttachedButBroken() == true))
@@ -261,14 +350,14 @@ namespace HID_PnP_Demo
             if (myHidUtility.getAttachedState() == true)
             {
                 //Update the pushbutton state label.
-                if (myHidUtility.getPushbuttonPressed() == false)
+                if (PushbuttonPressed == false)
                     PushbuttonState_lbl.Text = "Pushbutton State: Not Pressed";		//Update the pushbutton state text label on the form, so the user can see the result 
                 else
                     PushbuttonState_lbl.Text = "Pushbutton State: Pressed";			//Update the pushbutton state text label on the form, so the user can see the result 
-                if(myHidUtility.getToggleLEDsPending())
+                if(ToggleLEDsPending)
                     PushbuttonState_lbl.Text += ", LED toggle pending";
                 //Update the ANxx/POT Voltage indicator value (progressbar)
-                progressBar1.Value = (int) myHidUtility.getADCValue();
+                progressBar1.Value = (int) ADCValue;
             }
             //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
             //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -286,6 +375,10 @@ namespace HID_PnP_Demo
 
         public void ReadWriteThread_DoWork(object sender, DoWorkEventArgs e)
         {
+            if(myHidUtility.getAttachedState())
+            {
+
+            }
             myHidUtility.ReadWriteThread_DoWork(sender, e);
         }
 

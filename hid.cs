@@ -96,6 +96,11 @@ using System.Threading;
 
 namespace hid
 {
+    public delegate bool sendPacket_delegate(ref byte[] outBuffer);
+    public delegate void packetSent_delegate(bool success);
+    public delegate bool receivePacket_delegate();
+    public delegate void packetReceived_delegate(ref byte[] inBuffer);
+
     public class HidUtility
     {
         //Constant definitions from setupapi.h, which we aren't allowed to include directly since this is C#
@@ -273,11 +278,24 @@ namespace hid
         int deviceListIndex = 0;
 
         //Variables used by the application/form updates.
-        bool PushbuttonPressed = false;     //Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
-        bool ToggleLEDsPending = false;     //Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
-        uint ADCValue = 0;			//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+        //bool PushbuttonPressed = false;     //Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+        //bool ToggleLEDsPending = false;     //Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
+        //uint ADCValue = 0;			//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+
+        sendPacket_delegate sendPacket_handler;
+        packetSent_delegate packetSent_handler;
+        receivePacket_delegate receivePacket_handler;
+        packetReceived_delegate packetReceived_handler;
 
         //--------------- End of Global Varibles ------------------
+
+        public HidUtility(sendPacket_delegate sendPacket_h, packetSent_delegate packetSent_h, receivePacket_delegate receivePacket_h, packetReceived_delegate packetReceived_h)
+        {
+            sendPacket_handler = sendPacket_h;
+            packetSent_handler = packetSent_h;
+            receivePacket_handler = receivePacket_h;
+            packetReceived_handler = packetReceived_h;
+        }
 
         public int ScanDevices()
         {
@@ -658,14 +676,35 @@ namespace hid
                         //Get ANxx/POT Voltage value from the microcontroller firmware.  Note: some demo boards may not have a pot
                         //on them.  In this case, the firmware may be configured to read an ANxx I/O pin voltage with the ADC
                         //instead.  If this is the case, apply a proper voltage to the pin.  See the firmware for exact implementation.
-                        OUTBuffer[0] = 0x00;	//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                        OUTBuffer[1] = 0x37;	//READ_POT command (see the firmware source code), gets 10-bit ADC Value
+                        //OUTBuffer[0] = 0x00;	//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
+                        //OUTBuffer[1] = 0x37;	//READ_POT command (see the firmware source code), gets 10-bit ADC Value
                         //Initialize the rest of the 64-byte packet to "0xFF".  Binary '1' bits do not use as much power, and do not cause as much EMI
                         //when they move across the USB cable.  USB traffic is "NRZI" encoded, where '1' bits do not cause the D+/D- signals to toggle states.
                         //This initialization is not strictly necessary however.
-                        for (uint i = 2; i < 65; i++)
-                            OUTBuffer[i] = 0xFF;
+                        //for (uint i = 2; i < 65; i++)
+                        //    OUTBuffer[i] = 0xFF;
 
+                        if(sendPacket_handler(ref OUTBuffer))
+                        {
+                            if(WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))
+                            {
+                                packetSent_handler(true);
+                            }
+                            else
+                            {
+                                packetSent_handler(false);
+                            }
+                        }
+                        if(receivePacket_handler())
+                        {
+                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))		//Blocking function, unless an "overlapped" structure is used	
+                            {
+                                packetReceived_handler(ref INBuffer);
+                            }
+                        }
+
+
+                        /*
                         //To get the ADCValue, first, we send a packet with our "READ_POT" command in it.
                         if (WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used
                         {
@@ -682,9 +721,7 @@ namespace hid
                                 }
                             }
                         }
-
-
-
+                        
                         //Get the pushbutton state from the microcontroller firmware.
                         OUTBuffer[0] = 0;			//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
                         OUTBuffer[1] = 0x81;		//0x81 is the "Get Pushbutton State" command in the firmware
@@ -728,6 +765,7 @@ namespace hid
                             WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero);	//Blocking function, unless an "overlapped" structure is used
                             ToggleLEDsPending = false;
                         }
+                        */
                     } //end of: if(AttachedState == true)
                     else
                     {
@@ -855,6 +893,7 @@ namespace hid
             return AttachedButBroken;
         }
 
+        /*
         public uint getADCValue()
         {
             return ADCValue;
@@ -879,6 +918,7 @@ namespace hid
         {
             return ToggleLEDsPending;
         }
+        */
 
         //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
         //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
