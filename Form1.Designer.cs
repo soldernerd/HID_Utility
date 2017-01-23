@@ -36,7 +36,7 @@ namespace HID_PnP_Demo
             this.StatusBox_lbl = new System.Windows.Forms.Label();
             this.StatusBox_txtbx = new System.Windows.Forms.TextBox();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.ReadWriteThread = new System.ComponentModel.BackgroundWorker();
+            //this.ReadWriteThread = new System.ComponentModel.BackgroundWorker();
             this.FormUpdateTimer = new System.Windows.Forms.Timer(this.components);
             this.ANxVoltageToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.ToggleLEDToolTip = new System.Windows.Forms.ToolTip(this.components);
@@ -110,8 +110,8 @@ namespace HID_PnP_Demo
             // 
             // ReadWriteThread
             // 
-            this.ReadWriteThread.WorkerReportsProgress = true;
-            this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
+            //this.ReadWriteThread.WorkerReportsProgress = true;
+            //this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
             // 
             // FormUpdateTimer
             // 

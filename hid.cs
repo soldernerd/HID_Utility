@@ -1,63 +1,4 @@
-﻿//-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-/********************************************************************
- FileName:		Form1.cs
- Dependencies:	When compiled, needs .NET framework 4.6 redistributable to run.
- Hardware:		Need a free USB port to connect USB peripheral device
-				programmed with appropriate Generic HID firmware.  VID and
-				PID in firmware must match the VID and PID in this
-				program.
- Compiler:  	Microsoft Visual C# 2005 Express Edition (or better)
- Company:		Microchip Technology, Inc.
- 
- Software License Agreement:
-
- The software supplied herewith by Microchip Technology Incorporated
- (the “Company”) for its PIC® Microcontroller is intended and
- supplied to you, the Company’s customer, for use solely and
- exclusively with Microchip PIC Microcontroller products. The
- software is owned by the Company and/or its supplier, and is
- protected under applicable copyright laws. All rights are reserved.
- Any use in violation of the foregoing restrictions may subject the
- user to criminal sanctions under applicable laws, as well as to
- civil liability for the breach of the terms and conditions of this
- license.
-
- THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
- WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
-
-********************************************************************
- File Description:
-
- Change History:
-  Rev   Date         Description
-  2.5a	07/17/2009	 Initial Release.  Ported from HID PnP Demo
-                     application source, which was originally 
-                     written in MSVC++ 2005 Express Edition.
-********************************************************************
-NOTE:	All user made code contained in this project is in the Form1.cs file.
-		All other code and files were generated automatically by either the
-		new project wizard, or by the development environment (ex: code is
-		automatically generated if you create a new button on the form, and
-		then double click on it, which creates a click event handler
-		function).  User developed code (code not developed by the IDE) has
-        been marked in "cut and paste blocks" to make it easier to identify.
-********************************************************************/
-
-//NOTE: In order for this program to "find" a USB device with a given VID and PID, 
-//both the VID and PID in the USB device descriptor (in the USB firmware on the 
-//microcontroller), as well as in this PC application source code, must match.
-//To change the VID/PID in this PC application source code, scroll down to the 
-//CheckIfPresentAndGetUSBDevicePath() function, and change the line that currently
-//reads:
-
-//   String DeviceIDToFind = "Vid_04d8&Pid_003f";
-
-
+﻿
 //NOTE 2: This C# program makes use of several functions in setupapi.dll and
 //other Win32 DLLs.  However, one cannot call the functions directly in a 
 //32-bit DLL if the project is built in "Any CPU" mode, when run on a 64-bit OS.
@@ -77,25 +18,18 @@ NOTE:	All user made code contained in this project is in the Form1.cs file.
 //not appear, select: "<New...>" and then select the x86 option in the 
 //"Type or select the new platform:" drop down box.  
 
-//-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Text;
 using System.Windows.Forms;
 using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-
 namespace hid
 {
+
+    //Delegate declarations. These are used as callback functions to notify the application of USB events
     public delegate bool sendPacket_delegate(ref byte[] outBuffer);
     public delegate void packetSent_delegate(bool success);
     public delegate bool receivePacket_delegate();
@@ -277,15 +211,15 @@ namespace hid
         string[] deviceList = new string[10000];
         int deviceListIndex = 0;
 
-        //Variables used by the application/form updates.
-        //bool PushbuttonPressed = false;     //Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
-        //bool ToggleLEDsPending = false;     //Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
-        //uint ADCValue = 0;			//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+        //A separate thread for USB communication
+        System.ComponentModel.BackgroundWorker ReadWriteThread;
 
+        //Delegates used as callback functions to notify the application of USB events
         sendPacket_delegate sendPacket_handler;
         packetSent_delegate packetSent_handler;
         receivePacket_delegate receivePacket_handler;
         packetReceived_delegate packetReceived_handler;
+        
 
         //--------------- End of Global Varibles ------------------
 
@@ -295,7 +229,14 @@ namespace hid
             packetSent_handler = packetSent_h;
             receivePacket_handler = receivePacket_h;
             packetReceived_handler = packetReceived_h;
+
+            ReadWriteThread = new System.ComponentModel.BackgroundWorker();
+            ReadWriteThread.WorkerReportsProgress = true;
+            ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
+            ReadWriteThread.RunWorkerAsync();
         }
+
+        
 
         public int ScanDevices()
         {
@@ -673,19 +614,10 @@ namespace hid
                 {
                     if (AttachedState == true)	//Do not try to use the read/write handles unless the USB device is attached and ready
                     {
-                        //Get ANxx/POT Voltage value from the microcontroller firmware.  Note: some demo boards may not have a pot
-                        //on them.  In this case, the firmware may be configured to read an ANxx I/O pin voltage with the ADC
-                        //instead.  If this is the case, apply a proper voltage to the pin.  See the firmware for exact implementation.
-                        //OUTBuffer[0] = 0x00;	//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                        //OUTBuffer[1] = 0x37;	//READ_POT command (see the firmware source code), gets 10-bit ADC Value
-                        //Initialize the rest of the 64-byte packet to "0xFF".  Binary '1' bits do not use as much power, and do not cause as much EMI
-                        //when they move across the USB cable.  USB traffic is "NRZI" encoded, where '1' bits do not cause the D+/D- signals to toggle states.
-                        //This initialization is not strictly necessary however.
-                        //for (uint i = 2; i < 65; i++)
-                        //    OUTBuffer[i] = 0xFF;
-
+                        //Ask application if a packet is to be sent to the device
                         if(sendPacket_handler(ref OUTBuffer))
                         {
+                            //Send packet and inform application of the success/error
                             if(WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))
                             {
                                 packetSent_handler(true);
@@ -695,77 +627,15 @@ namespace hid
                                 packetSent_handler(false);
                             }
                         }
+                        //Ask application if a packet is to be received
                         if(receivePacket_handler())
                         {
-                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))		//Blocking function, unless an "overlapped" structure is used	
+                            //Receive packet and inform application
+                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))	
                             {
                                 packetReceived_handler(ref INBuffer);
                             }
                         }
-
-
-                        /*
-                        //To get the ADCValue, first, we send a packet with our "READ_POT" command in it.
-                        if (WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used
-                        {
-                            INBuffer[0] = 0;
-                            //Now get the response packet from the firmware.
-                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))		//Blocking function, unless an "overlapped" structure is used	
-                            {
-                                //INBuffer[0] is the report ID, which we don't care about.
-                                //INBuffer[1] is an echo back of the command (see microcontroller firmware).
-                                //INBuffer[2] and INBuffer[3] contains the ADC value (see microcontroller firmware).  
-                                if (INBuffer[1] == 0x37)
-                                {
-                                    ADCValue = (uint)(INBuffer[3] << 8) + INBuffer[2];	//Need to reformat the data from two unsigned chars into one unsigned int.
-                                }
-                            }
-                        }
-                        
-                        //Get the pushbutton state from the microcontroller firmware.
-                        OUTBuffer[0] = 0;			//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                        OUTBuffer[1] = 0x81;		//0x81 is the "Get Pushbutton State" command in the firmware
-                        for (uint i = 2; i < 65; i++)	//This loop is not strictly necessary.  Simply initializes unused bytes to
-                            OUTBuffer[i] = 0xFF;				//0xFF for lower EMI and power consumption when driving the USB cable.
-
-                        //To get the pushbutton state, first, we send a packet with our "Get Pushbutton State" command in it.
-                        if (WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used
-                        {
-                            //Now get the response packet from the firmware.
-                            INBuffer[0] = 0;
-                            {
-                                if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used	
-                                {
-                                    //INBuffer[0] is the report ID, which we don't care about.
-                                    //INBuffer[1] is an echo back of the command (see microcontroller firmware).
-                                    //INBuffer[2] contains the I/O port pin value for the pushbutton (see microcontroller firmware).  
-                                    if ((INBuffer[1] == 0x81) && (INBuffer[2] == 0x01))
-                                    {
-                                        PushbuttonPressed = false;
-                                    }
-                                    if ((INBuffer[1] == 0x81) && (INBuffer[2] == 0x00))
-                                    {
-                                        PushbuttonPressed = true;
-                                    }
-                                }
-                            }
-                        }
-
-
-
-                        //Check if this thread should send a Toggle LED(s) command to the firmware.  ToggleLEDsPending will get set
-                        //by the ToggleLEDs_btn click event handler function if the user presses the button on the form.
-                        if (ToggleLEDsPending == true)
-                        {
-                            OUTBuffer[0] = 0;				//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                            OUTBuffer[1] = 0x80;			//0x80 is the "Toggle LED(s)" command in the firmware
-                            for (uint i = 2; i < 65; i++)	//This loop is not strictly necessary.  Simply initializes unused bytes to
-                                OUTBuffer[i] = 0xFF;		//0xFF for lower EMI and power consumption when driving the USB cable.
-                            //Now send the packet to the USB firmware on the microcontroller
-                            WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero);	//Blocking function, unless an "overlapped" structure is used
-                            ToggleLEDsPending = false;
-                        }
-                        */
                     } //end of: if(AttachedState == true)
                     else
                     {
@@ -786,8 +656,6 @@ namespace hid
                 }
 
             } //end of while(true) loop
-            //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
         }
 
 
@@ -892,38 +760,6 @@ namespace hid
         {
             return AttachedButBroken;
         }
-
-        /*
-        public uint getADCValue()
-        {
-            return ADCValue;
-        }
-
-        public void setADCValue(uint newValue)
-        {
-            ADCValue = newValue;
-        }
-
-        public bool getPushbuttonPressed()
-        {
-            return PushbuttonPressed;
-        }
-
-        public void setToggleLEDsPending()
-        {
-            ToggleLEDsPending = true;
-        }
-
-        public bool getToggleLEDsPending()
-        {
-            return ToggleLEDsPending;
-        }
-        */
-
-        //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
     }//hid_utility
 
