@@ -1,87 +1,4 @@
-﻿//-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-/********************************************************************
- FileName:		Form1.cs
- Dependencies:	When compiled, needs .NET framework 4.6 redistributable to run.
- Hardware:		Need a free USB port to connect USB peripheral device
-				programmed with appropriate Generic HID firmware.  VID and
-				PID in firmware must match the VID and PID in this
-				program.
- Compiler:  	Microsoft Visual C# 2005 Express Edition (or better)
- Company:		Microchip Technology, Inc.
- 
- Software License Agreement:
-
- The software supplied herewith by Microchip Technology Incorporated
- (the “Company”) for its PIC® Microcontroller is intended and
- supplied to you, the Company’s customer, for use solely and
- exclusively with Microchip PIC Microcontroller products. The
- software is owned by the Company and/or its supplier, and is
- protected under applicable copyright laws. All rights are reserved.
- Any use in violation of the foregoing restrictions may subject the
- user to criminal sanctions under applicable laws, as well as to
- civil liability for the breach of the terms and conditions of this
- license.
-
- THIS SOFTWARE IS PROVIDED IN AN “AS IS” CONDITION. NO WARRANTIES,
- WHETHER EXPRESS, IMPLIED OR STATUTORY, INCLUDING, BUT NOT LIMITED
- TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- PARTICULAR PURPOSE APPLY TO THIS SOFTWARE. THE COMPANY SHALL NOT,
- IN ANY CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL OR
- CONSEQUENTIAL DAMAGES, FOR ANY REASON WHATSOEVER.
-
-********************************************************************
- File Description:
-
- Change History:
-  Rev   Date         Description
-  2.5a	07/17/2009	 Initial Release.  Ported from HID PnP Demo
-                     application source, which was originally 
-                     written in MSVC++ 2005 Express Edition.
-********************************************************************
-NOTE:	All user made code contained in this project is in the Form1.cs file.
-		All other code and files were generated automatically by either the
-		new project wizard, or by the development environment (ex: code is
-		automatically generated if you create a new button on the form, and
-		then double click on it, which creates a click event handler
-		function).  User developed code (code not developed by the IDE) has
-        been marked in "cut and paste blocks" to make it easier to identify.
-********************************************************************/
-
-//NOTE: In order for this program to "find" a USB device with a given VID and PID, 
-//both the VID and PID in the USB device descriptor (in the USB firmware on the 
-//microcontroller), as well as in this PC application source code, must match.
-//To change the VID/PID in this PC application source code, scroll down to the 
-//CheckIfPresentAndGetUSBDevicePath() function, and change the line that currently
-//reads:
-
-//   String DeviceIDToFind = "Vid_04d8&Pid_003f";
-
-
-//NOTE 2: This C# program makes use of several functions in setupapi.dll and
-//other Win32 DLLs.  However, one cannot call the functions directly in a 
-//32-bit DLL if the project is built in "Any CPU" mode, when run on a 64-bit OS.
-//When configured to build an "Any CPU" executable, the executable will "become"
-//a 64-bit executable when run on a 64-bit OS.  On a 32-bit OS, it will run as 
-//a 32-bit executable, and the pointer sizes and other aspects of this 
-//application will be compatible with calling 32-bit DLLs.
-
-//Therefore, on a 64-bit OS, this application will not work unless it is built in
-//"x86" mode.  When built in this mode, the exectuable always runs in 32-bit mode
-//even on a 64-bit OS.  This allows this application to make 32-bit DLL function 
-//calls, when run on either a 32-bit or 64-bit OS.
-
-//By default, on a new project, C# normally wants to build in "Any CPU" mode.  
-//To switch to "x86" mode, open the "Configuration Manager" window.  In the 
-//"Active solution platform:" drop down box, select "x86".  If this option does
-//not appear, select: "<New...>" and then select the x86 option in the 
-//"Type or select the new platform:" drop down box.  
-
-//-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
+﻿
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -90,19 +7,171 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 using Microsoft.Win32.SafeHandles;
+using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Threading;
-
+using System.Management;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace hid
 {
-    public delegate bool sendPacket_delegate(ref byte[] outBuffer);
-    public delegate void packetSent_delegate(bool success);
-    public delegate bool receivePacket_delegate();
-    public delegate void packetReceived_delegate(ref byte[] inBuffer);
+    
+
+    internal static class UsbNotification
+    {
+        public const int DbtDevicearrival = 0x8000; // system detected a new device        
+        public const int DbtDeviceremovecomplete = 0x8004; // device is gone      
+        public const int WmDevicechange = 0x0219; // device change event      
+        private const int DbtDevtypDeviceinterface = 5;
+        private static readonly Guid GuidDevinterfaceUSBDevice = new Guid("A5DCBF10-6530-11D2-901F-00C04FB951ED"); // USB devices
+        private static IntPtr notificationHandle;
+
+        /// <summary>
+        /// Registers a window to receive notifications when USB devices are plugged or unplugged.
+        /// </summary>
+        /// <param name="windowHandle">Handle to the window receiving notifications.</param>
+        public static void RegisterUsbDeviceNotification(IntPtr windowHandle)
+        {
+            DevBroadcastDeviceinterface dbi = new DevBroadcastDeviceinterface
+            {
+                DeviceType = DbtDevtypDeviceinterface,
+                Reserved = 0,
+                ClassGuid = GuidDevinterfaceUSBDevice,
+                Name = 0
+            };
+
+            dbi.Size = Marshal.SizeOf(dbi);
+            IntPtr buffer = Marshal.AllocHGlobal(dbi.Size);
+            Marshal.StructureToPtr(dbi, buffer, true);
+
+            notificationHandle = RegisterDeviceNotification(windowHandle, buffer, 0);
+        }
+
+        /// <summary>
+        /// Unregisters the window for USB device notifications
+        /// </summary>
+        public static void UnregisterUsbDeviceNotification()
+        {
+            UnregisterDeviceNotification(notificationHandle);
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr RegisterDeviceNotification(IntPtr recipient, IntPtr notificationFilter, int flags);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterDeviceNotification(IntPtr handle);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct DevBroadcastDeviceinterface
+        {
+            internal int Size;
+            internal int DeviceType;
+            internal int Reserved;
+            internal Guid ClassGuid;
+            internal short Name;
+        }
+    }
+
+    //A class representing a USB device
+    public class Device : EventArgs
+    {
+        public string deviceId { get; private set; }
+        public string caption { get; private set; }
+        public string name { get; private set; }
+        public string manufacturer { get; private set; }
+        public string description { get; private set; }
+        public ushort pid { get; private set; }
+        public ushort vid { get; private set; }
+
+        public override string ToString()
+        {
+            return string.Format("{0} (VID=0x{1:X4} PID=0x{2:X4})", caption, vid, pid);
+        }
+
+        public Device(ManagementObject wmi_obj)
+        {
+            this.deviceId = wmi_obj["DeviceID"].ToString();
+            this.caption = wmi_obj["Caption"].ToString();
+            this.name = wmi_obj["Name"].ToString();
+            this.manufacturer = wmi_obj["Manufacturer"].ToString();
+            this.description = wmi_obj["Description"].ToString();
+            Match match = Regex.Match(this.deviceId, "PID_(.{4})", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                string pid_string = match.Groups[1].Value;
+                pid = ushort.Parse(pid_string, System.Globalization.NumberStyles.HexNumber);
+            }
+            match = Regex.Match(this.deviceId, "VID_(.{4})", RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                string vid_string = match.Groups[1].Value;
+                vid = ushort.Parse(vid_string, System.Globalization.NumberStyles.HexNumber);
+            }
+        }
+    }
+
+
+    //A class representing a USB buffer
+    public class UsbBuffer : EventArgs
+    {
+        public byte[] buffer
+        {
+            get;
+            set;
+        }
+        public bool RequestTransfer
+        {
+            get;
+            set;
+        }
+        public bool TransferSuccessful
+        {
+            get;
+            set;
+        }
+
+        public UsbBuffer()
+        {
+            buffer = new byte[65];
+            RequestTransfer = false;
+            TransferSuccessful = false;
+            clear();
+        }
+
+        public void clear()
+        {
+            for (int i = 0; i < 65; ++i)
+            {
+                buffer[i] = 0xFF;
+            }
+        }
+    }
+
 
     public class HidUtility
     {
+        public delegate void DeviceAddedEventHandler(object sender, Device dev);
+        public delegate void DeviceRemovedEventHandler(object sender, Device dev);
+        public delegate void SendPacketEventHandler(object sender, UsbBuffer OutBuffer);
+        public delegate void PacketSentEventHandler(object sender, UsbBuffer OutBuffer);
+        public delegate void ReceivePacketEventHandler(object sender, UsbBuffer InBuffer);
+        public delegate void PacketReceivedEventHandler(object sender, UsbBuffer InBuffer);
+
+        public event DeviceAddedEventHandler RaiseDeviceAddedEvent;
+        public event DeviceRemovedEventHandler RaiseDeviceRemovedEvent;
+        public event SendPacketEventHandler RaiseSendPacketEvent;
+        public event PacketSentEventHandler RaisePacketSentEvent;
+        public event ReceivePacketEventHandler RaiseReceivePacketEvent;
+        public event PacketReceivedEventHandler RaisePacketReceivedEvent;
+
+        private List<string> DeviceIdList;
+        private List<Device> DeviceList;
+
+        private System.ComponentModel.BackgroundWorker UsbThread;
+
+
         //Constant definitions from setupapi.h, which we aren't allowed to include directly since this is C#
         internal const uint DIGCF_PRESENT = 0x02;
         internal const uint DIGCF_DEVICEINTERFACE = 0x10;
@@ -274,165 +343,190 @@ namespace hid
         //Globally Unique Identifier (GUID) for HID class devices.  Windows uses GUIDs to identify things.
         Guid InterfaceClassGuid = new Guid(0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
 
-        string[] deviceList = new string[10000];
-        int deviceListIndex = 0;
+        private readonly IntPtr sourceHandle;
+        private const int WM_COPYDATA = 0x004A;
 
-        //Variables used by the application/form updates.
-        //bool PushbuttonPressed = false;     //Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
-        //bool ToggleLEDsPending = false;     //Updated by ToggleLED(s) button click event handler, used by ReadWriteThread (needs to be atomic)
-        //uint ADCValue = 0;			//Updated by ReadWriteThread, read by FormUpdateTimer tick handler (needs to be atomic)
+        async void OnDeviceRemoved()
+        {
+            //Return immediately and do all the work asynchronously
+            await Task.Yield();
+            //Get a list with the device IDs of all removed devices
+            List<string> NewDeviceIdList = getDeviceIdList();
+            //List<string> RemovedDeviceIdList = (List<string>)DeviceIdList.Except(NewDeviceIdList);
+            List<string> RemovedDeviceIdList = new List<string>();
+            foreach(string devId in DeviceIdList)
+            {
+                if (!NewDeviceIdList.Contains(devId))
+                {
+                    RemovedDeviceIdList.Add(devId);
+                }
+            }
+            //Loop through all devices in reverse order (we can't remove items inside a foreach() loop)
+            for (int i = DeviceList.Count - 1; i >= 0; i--)
+            {
+                //Check if device is in the list of removed devices
+                if (RemovedDeviceIdList.Contains(DeviceList[i].deviceId))
+                {
+                    //Remove device from DeviceList
+                    DeviceList.RemoveAt(i);
+                    //Remove deviceId from DeviceIdList
+                    DeviceIdList.Remove(DeviceList[i].deviceId);
+                    //Raise event if there are any subscribers
+                    if (RaiseDeviceRemovedEvent != null)
+                    {
+                        RaiseDeviceRemovedEvent(this, DeviceList[i]);
+                    }
+                }
+            }
+        }
 
-        sendPacket_delegate sendPacket_handler;
-        packetSent_delegate packetSent_handler;
-        receivePacket_delegate receivePacket_handler;
-        packetReceived_delegate packetReceived_handler;
+        async void OnDeviceAdded()
+        {
+            //Return immediately and do all the work asynchronously
+            await Task.Yield();
+            //Get a list with the device IDs of all removed devices
+            List<string> NewDeviceIdList = getDeviceIdList();
+            List<string> AddedDeviceIdList = new List<string>();
+            foreach (string devId in NewDeviceIdList)
+            {
+                if (!DeviceIdList.Contains(devId))
+                {
+                    AddedDeviceIdList.Add(devId);
+                }
+            }
+            //Get more information
+            List<Device> NewDeviceList = getDeviceList();
+            //Loop through all devices
+            foreach(Device dev in NewDeviceList)
+            {
+                //Check if device is in the list of added devices
+                if (AddedDeviceIdList.Contains(dev.deviceId))
+                {
+                    //Add device to DeviceList
+                    DeviceList.Add(dev);
+                    //Add deviceId to DeviceIdList
+                    DeviceIdList.Add(dev.deviceId);
+                    //Raise event if there are any subscribers
+                    if (RaiseDeviceRemovedEvent != null)
+                    {
+                        RaiseDeviceAddedEvent(this, dev);
+                    }
+                }
+            }
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wparam, IntPtr lparam, ref bool handled)
+        {
+            if (msg == UsbNotification.WmDevicechange)
+            {
+                switch ((int)wparam)
+                {
+                    case UsbNotification.DbtDeviceremovecomplete:
+                        OnDeviceRemoved();
+                        break;
+                    case UsbNotification.DbtDevicearrival:
+                        OnDeviceAdded();
+                        break;
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        private IntPtr CreateMessageOnlyWindow()
+        {
+            IntPtr HWND_MESSAGE = new IntPtr(-3);
+            HwndSourceParameters sourceParam = new HwndSourceParameters() { ParentWindow = HWND_MESSAGE };
+            HwndSource source = new HwndSource(sourceParam);
+            source.AddHook(WndProc);
+            return source.Handle;
+        }
 
         //--------------- End of Global Varibles ------------------
 
-        public HidUtility(sendPacket_delegate sendPacket_h, packetSent_delegate packetSent_h, receivePacket_delegate receivePacket_h, packetReceived_delegate packetReceived_h)
+        //public HidUtility(sendPacket_delegate sendPacket_h, packetSent_delegate packetSent_h, receivePacket_delegate receivePacket_h, packetReceived_delegate packetReceived_h)
+        public HidUtility()
         {
-            sendPacket_handler = sendPacket_h;
-            packetSent_handler = packetSent_h;
-            receivePacket_handler = receivePacket_h;
-            packetReceived_handler = packetReceived_h;
+            DeviceIdList = getDeviceIdList();
+            DeviceList = getDeviceList();
+
+            sourceHandle = this.CreateMessageOnlyWindow();
+            UsbNotification.RegisterUsbDeviceNotification(sourceHandle);
+
+            UsbThread = new System.ComponentModel.BackgroundWorker();
+            UsbThread.DoWork += new System.ComponentModel.DoWorkEventHandler(UsbThread_DoWork);
+
         }
 
-        public int ScanDevices()
+        
+
+        private List<string> getDeviceIdList()
         {
-            /* 
-		    Before we can "connect" our application to our USB embedded device, we must first find the device.
-		    A USB bus can have many devices simultaneously connected, so somehow we have to find our device only.
-		    This is done with the Vendor ID (VID) and Product ID (PID).  Each USB product line should have
-		    a unique combination of VID and PID.  
+            List<string> deviceIDs = new List<string>();
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_USBControllerDevice");
+            ManagementObjectCollection objs = searcher.Get();
+            foreach (ManagementObject wmi_HD in objs)
+            {
+                string dep = wmi_HD["Dependent"].ToString();
+                Match match = Regex.Match(dep, "\"(.+VID.+PID.+)\"$", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    string devId = match.Groups[1].Value;
+                    devId = devId.Replace(@"\\", @"\");
+                    deviceIDs.Add(devId);
+                }
+            }
+            return deviceIDs;
+        }
 
-		    Microsoft has created a number of functions which are useful for finding plug and play devices.  Documentation
-		    for each function used can be found in the MSDN library.  We will be using the following functions (unmanaged C functions):
+        public List<Device> getDeviceList()
+        {
+            List<Device> devices = new List<Device>();
+            List<string> deviceIDs = getDeviceIdList();
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity");
+            ManagementObjectCollection objs = searcher.Get();
 
-		    SetupDiGetClassDevs()					//provided by setupapi.dll, which comes with Windows
-		    SetupDiEnumDeviceInterfaces()			//provided by setupapi.dll, which comes with Windows
-		    GetLastError()							//provided by kernel32.dll, which comes with Windows
-		    SetupDiDestroyDeviceInfoList()			//provided by setupapi.dll, which comes with Windows
-		    SetupDiGetDeviceInterfaceDetail()		//provided by setupapi.dll, which comes with Windows
-		    SetupDiGetDeviceRegistryProperty()		//provided by setupapi.dll, which comes with Windows
-		    CreateFile()							//provided by kernel32.dll, which comes with Windows
+            foreach (ManagementObject wmi_HD in objs)
+            {
+                string deviceId = wmi_HD["DeviceID"].ToString();
+                if (deviceIDs.Contains(deviceId))
+                {
+                    string caption = wmi_HD["Caption"].ToString();
+                    Device dev = new Device(wmi_HD);
+                    devices.Add(dev);
+                }
+            }
+            return devices;
+        }
 
-            In order to call these unmanaged functions, the Marshal class is very useful.
-             
-		    We will also be using the following unusual data types and structures.  Documentation can also be found in
-		    the MSDN library:
+        public List<Device> getDeviceList(ushort Vid, ushort Pid)
+        {
+            List<Device> devices = getDeviceList();
+            var qry = devices.Where(d => d.pid == Pid && d.vid == Vid);
+            List<Device> matchingDevices = new List<Device>();
+            foreach (Device dev in qry)
+            {
+                matchingDevices.Add(dev);
+            }
+            return matchingDevices;
+        }
 
-		    PSP_DEVICE_INTERFACE_DATA
-		    PSP_DEVICE_INTERFACE_DETAIL_DATA
-		    SP_DEVINFO_DATA
-		    HDEVINFO
-		    HANDLE
-		    GUID
-
-		    The ultimate objective of the following code is to get the device path, which will be used elsewhere for getting
-		    read and write handles to the USB device.  Once the read/write handles are opened, only then can this
-		    PC application begin reading/writing to the USB device using the WriteFile() and ReadFile() functions.
-
-		    Getting the device path is a multi-step round about process, which requires calling several of the
-		    SetupDixxx() functions provided by setupapi.dll.
-		    */
-
-            deviceListIndex = 0;
-
+        public Device getDevice(ushort Pid, ushort Vid)
+        {
+            List<Device> devices = getDeviceList();
             try
             {
-                IntPtr DeviceInfoTable = IntPtr.Zero;
-                SP_DEVICE_INTERFACE_DATA InterfaceDataStructure = new SP_DEVICE_INTERFACE_DATA();
-                SP_DEVICE_INTERFACE_DETAIL_DATA DetailedInterfaceDataStructure = new SP_DEVICE_INTERFACE_DETAIL_DATA();
-                SP_DEVINFO_DATA DevInfoData = new SP_DEVINFO_DATA();
-
-                uint InterfaceIndex = 0;
-                uint dwRegType = 0;
-                uint dwRegSize = 0;
-                uint dwRegSize2 = 0;
-                uint StructureSize = 0;
-                IntPtr PropertyValueBuffer = IntPtr.Zero;
-                bool MatchFound = false;
-                uint ErrorStatus;
-                uint LoopCounter = 0;
-
-                //First populate a list of plugged in devices (by specifying "DIGCF_PRESENT"), which are of the specified class GUID. 
-                DeviceInfoTable = SetupDiGetClassDevs(ref InterfaceClassGuid, IntPtr.Zero, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-
-                if (DeviceInfoTable != IntPtr.Zero)
-                {
-                    //Now look through the list we just populated.  We are trying to see if any of them match our device. 
-                    while (true)
-                    {
-                        InterfaceDataStructure.cbSize = (uint)Marshal.SizeOf(InterfaceDataStructure);
-                        if (SetupDiEnumDeviceInterfaces(DeviceInfoTable, IntPtr.Zero, ref InterfaceClassGuid, InterfaceIndex, ref InterfaceDataStructure))
-                        {
-                            ErrorStatus = (uint)Marshal.GetLastWin32Error();
-                            if (ErrorStatus == ERROR_NO_MORE_ITEMS) //Did we reach the end of the list of matching devices in the DeviceInfoTable?
-                            {   //Cound not find the device.  Must not have been attached.
-                                SetupDiDestroyDeviceInfoList(DeviceInfoTable);  //Clean up the old structure we no longer need.
-                                return deviceListIndex;
-                            }
-                        }
-                        else    //Else some other kind of unknown error ocurred...
-                        {
-                            ErrorStatus = (uint)Marshal.GetLastWin32Error();
-                            SetupDiDestroyDeviceInfoList(DeviceInfoTable);  //Clean up the old structure we no longer need.
-                            return (int) ErrorStatus;
-                        }
-
-                        //Now retrieve the hardware ID from the registry.  The hardware ID contains the VID and PID, which we will then 
-                        //check to see if it is the correct device or not.
-
-                        //Initialize an appropriate SP_DEVINFO_DATA structure.  We need this structure for SetupDiGetDeviceRegistryProperty().
-                        DevInfoData.cbSize = (uint)Marshal.SizeOf(DevInfoData);
-                        SetupDiEnumDeviceInfo(DeviceInfoTable, InterfaceIndex, ref DevInfoData);
-
-                        //First query for the size of the hardware ID, so we can know how big a buffer to allocate for the data.
-                        SetupDiGetDeviceRegistryProperty(DeviceInfoTable, ref DevInfoData, SPDRP_HARDWAREID, ref dwRegType, IntPtr.Zero, 0, ref dwRegSize);
-
-                        //Allocate a buffer for the hardware ID.
-                        //Should normally work, but could throw exception "OutOfMemoryException" if not enough resources available.
-                        PropertyValueBuffer = Marshal.AllocHGlobal((int)dwRegSize);
-
-                        //Retrieve the hardware IDs for the current device we are looking at.  PropertyValueBuffer gets filled with a 
-                        //REG_MULTI_SZ (array of null terminated strings).  To find a device, we only care about the very first string in the
-                        //buffer, which will be the "device ID".  The device ID is a string which contains the VID and PID, in the example 
-                        //format "Vid_04d8&Pid_003f".
-                        SetupDiGetDeviceRegistryProperty(DeviceInfoTable, ref DevInfoData, SPDRP_HARDWAREID, ref dwRegType, PropertyValueBuffer, dwRegSize, ref dwRegSize2);
-
-                        //Now check if the first string in the hardware ID matches the device ID of the USB device we are trying to find.
-                        String DeviceIDFromRegistry = Marshal.PtrToStringUni(PropertyValueBuffer); //Make a new string, fill it with the contents from the PropertyValueBuffer
-
-                        Marshal.FreeHGlobal(PropertyValueBuffer);		//No longer need the PropertyValueBuffer, free the memory to prevent potential memory leaks
-
-                        //Save device string
-                        deviceList[deviceListIndex++] = DeviceIDFromRegistry;
-                        
-                        InterfaceIndex++;
-                        //Keep looping until we either find a device with matching VID and PID, or until we run out of devices to check.
-                        //However, just in case some unexpected error occurs, keep track of the number of loops executed.
-                        //If the number of loops exceeds a very large number, exit anyway, to prevent inadvertent infinite looping.
-                        LoopCounter++;
-                        if (LoopCounter == 1000)    //Surely there aren't more than 1000 devices attached to any forseeable PC...
-                        {
-                            return -2;
-                        }
-                    }
-                }
-            }//end of try
-              
+                return devices.Where(d => d.pid == Pid && d.vid == Vid).Last();
+            }
             catch
             {
-                //Something went wrong if PC gets here.  Maybe a Marshal.AllocHGlobal() failed due to insufficient resources or something.
-                return -3;
+                return null;
             }
-
-            return -4;
         }
 
+        /*
         public bool FindDevice(string DeviceIDToFind)
         {
-            /* 
+             
 		    Before we can "connect" our application to our USB embedded device, we must first find the device.
 		    A USB bus can have many devices simultaneously connected, so somehow we have to find our device only.
 		    This is done with the Vendor ID (VID) and Product ID (PID).  Each USB product line should have
@@ -467,7 +561,7 @@ namespace hid
 
 		    Getting the device path is a multi-step round about process, which requires calling several of the
 		    SetupDixxx() functions provided by setupapi.dll.
-		    */
+		    
 
             deviceListIndex = 0;
 
@@ -611,188 +705,80 @@ namespace hid
                 return false;
             }
         } //findDevice
+        */
 
-        public string getDeviceListAsString()
+        
+        public void UsbThread_DoWork(object sender, DoWorkEventArgs e)
         {
-            string devicesText = "";
-            for (int i = 0; i < deviceListIndex; ++i)
-            {
-                devicesText += deviceList[i] + Environment.NewLine;
-            }
-            return devicesText;
-        }
-
-        public void ReadWriteThread_DoWork(object sender, DoWorkEventArgs e)
-        {
-            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-            //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
-
-            /*This thread does the actual USB read/write operations (but only when AttachedState == true) to the USB device.
-            It is generally preferrable to write applications so that read and write operations are handled in a separate
-            thread from the main form.  This makes it so that the main form can remain responsive, even if the I/O operations
-            take a very long time to complete.
-
-            Since this is a separate thread, this code below executes independently from the rest of the
-            code in this application.  All this thread does is read and write to the USB device.  It does not update
-            the form directly with the new information it obtains (such as the ANxx/POT Voltage or pushbutton state).
-            The information that this thread obtains is stored in atomic global variables.
-            Form updates are handled by the FormUpdateTimer Tick event handler function.
-
-            This application sends packets to the endpoint buffer on the USB device by using the "WriteFile()" function.
-            This application receives packets from the endpoint buffer on the USB device by using the "ReadFile()" function.
-            Both of these functions are documented in the MSDN library.  Calling ReadFile() is a not perfectly straight
-            foward in C# environment, since one of the input parameters is a pointer to a buffer that gets filled by ReadFile().
-            The ReadFile() function is therefore called through a wrapper function ReadFileManagedBuffer().
-
-            All ReadFile() and WriteFile() operations in this example project are synchronous.  They are blocking function
-            calls and only return when they are complete, or if they fail because of some event, such as the user unplugging
-            the device.  It is possible to call these functions with "overlapped" structures, and use them as non-blocking
-            asynchronous I/O function calls.  
-
-            Note:  This code may perform differently on some machines when the USB device is plugged into the host through a
-            USB 2.0 hub, as opposed to a direct connection to a root port on the PC.  In some cases the data rate may be slower
-            when the device is connected through a USB 2.0 hub.  This performance difference is believed to be caused by
-            the issue described in Microsoft knowledge base article 940021:
-            http://support.microsoft.com/kb/940021/en-us 
-
-            Higher effective bandwidth (up to the maximum offered by interrupt endpoints), both when connected
-            directly and through a USB 2.0 hub, can generally be achieved by queuing up multiple pending read and/or
-            write requests simultaneously.  This can be done when using	asynchronous I/O operations (calling ReadFile() and
-            WriteFile()	with overlapped structures).  The Microchip	HID USB Bootloader application uses asynchronous I/O
-            for some USB operations and the source code can be used	as an example.*/
-
-
-            Byte[] OUTBuffer = new byte[65];    //Allocate a memory buffer equal to the OUT endpoint size + 1
-            Byte[] INBuffer = new byte[65];     //Allocate a memory buffer equal to the IN endpoint size + 1
+            UsbBuffer OutBuffer = new UsbBuffer();
+            UsbBuffer InBuffer = new UsbBuffer();
             uint BytesWritten = 0;
             uint BytesRead = 0;
 
             while (true)
             {
-                try
+                //Do not try to use the read/write handles unless the USB device is attached and ready
+                if (AttachedState == true)
                 {
-                    if (AttachedState == true)	//Do not try to use the read/write handles unless the USB device is attached and ready
+                    // Raise SendPacket event if there are any subscribers
+                    if (RaiseSendPacketEvent != null)
                     {
-                        //Get ANxx/POT Voltage value from the microcontroller firmware.  Note: some demo boards may not have a pot
-                        //on them.  In this case, the firmware may be configured to read an ANxx I/O pin voltage with the ADC
-                        //instead.  If this is the case, apply a proper voltage to the pin.  See the firmware for exact implementation.
-                        //OUTBuffer[0] = 0x00;	//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                        //OUTBuffer[1] = 0x37;	//READ_POT command (see the firmware source code), gets 10-bit ADC Value
-                        //Initialize the rest of the 64-byte packet to "0xFF".  Binary '1' bits do not use as much power, and do not cause as much EMI
-                        //when they move across the USB cable.  USB traffic is "NRZI" encoded, where '1' bits do not cause the D+/D- signals to toggle states.
-                        //This initialization is not strictly necessary however.
-                        //for (uint i = 2; i < 65; i++)
-                        //    OUTBuffer[i] = 0xFF;
-
-                        if(sendPacket_handler(ref OUTBuffer))
+                        //Ask the application if a packet should be sent and let it prepare the data to be sent
+                        RaiseSendPacketEvent(this, OutBuffer);
+                        //Send packet if the application requested so
+                        if(OutBuffer.RequestTransfer)
                         {
-                            if(WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))
+                            try
                             {
-                                packetSent_handler(true);
+                                OutBuffer.TransferSuccessful = WriteFile(WriteHandleToUSBDevice, OutBuffer.buffer, 65, ref BytesWritten, IntPtr.Zero);
                             }
-                            else
+                            catch
                             {
-                                packetSent_handler(false);
+                                OutBuffer.TransferSuccessful = false;
                             }
                         }
-                        if(receivePacket_handler())
-                        {
-                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))		//Blocking function, unless an "overlapped" structure is used	
-                            {
-                                packetReceived_handler(ref INBuffer);
-                            }
-                        }
-
-
-                        /*
-                        //To get the ADCValue, first, we send a packet with our "READ_POT" command in it.
-                        if (WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used
-                        {
-                            INBuffer[0] = 0;
-                            //Now get the response packet from the firmware.
-                            if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))		//Blocking function, unless an "overlapped" structure is used	
-                            {
-                                //INBuffer[0] is the report ID, which we don't care about.
-                                //INBuffer[1] is an echo back of the command (see microcontroller firmware).
-                                //INBuffer[2] and INBuffer[3] contains the ADC value (see microcontroller firmware).  
-                                if (INBuffer[1] == 0x37)
-                                {
-                                    ADCValue = (uint)(INBuffer[3] << 8) + INBuffer[2];	//Need to reformat the data from two unsigned chars into one unsigned int.
-                                }
-                            }
-                        }
-                        
-                        //Get the pushbutton state from the microcontroller firmware.
-                        OUTBuffer[0] = 0;			//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                        OUTBuffer[1] = 0x81;		//0x81 is the "Get Pushbutton State" command in the firmware
-                        for (uint i = 2; i < 65; i++)	//This loop is not strictly necessary.  Simply initializes unused bytes to
-                            OUTBuffer[i] = 0xFF;				//0xFF for lower EMI and power consumption when driving the USB cable.
-
-                        //To get the pushbutton state, first, we send a packet with our "Get Pushbutton State" command in it.
-                        if (WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used
-                        {
-                            //Now get the response packet from the firmware.
-                            INBuffer[0] = 0;
-                            {
-                                if (ReadFileManagedBuffer(ReadHandleToUSBDevice, INBuffer, 65, ref BytesRead, IntPtr.Zero))	//Blocking function, unless an "overlapped" structure is used	
-                                {
-                                    //INBuffer[0] is the report ID, which we don't care about.
-                                    //INBuffer[1] is an echo back of the command (see microcontroller firmware).
-                                    //INBuffer[2] contains the I/O port pin value for the pushbutton (see microcontroller firmware).  
-                                    if ((INBuffer[1] == 0x81) && (INBuffer[2] == 0x01))
-                                    {
-                                        PushbuttonPressed = false;
-                                    }
-                                    if ((INBuffer[1] == 0x81) && (INBuffer[2] == 0x00))
-                                    {
-                                        PushbuttonPressed = true;
-                                    }
-                                }
-                            }
-                        }
-
-
-
-                        //Check if this thread should send a Toggle LED(s) command to the firmware.  ToggleLEDsPending will get set
-                        //by the ToggleLEDs_btn click event handler function if the user presses the button on the form.
-                        if (ToggleLEDsPending == true)
-                        {
-                            OUTBuffer[0] = 0;				//The first byte is the "Report ID" and does not get sent over the USB bus.  Always set = 0.
-                            OUTBuffer[1] = 0x80;			//0x80 is the "Toggle LED(s)" command in the firmware
-                            for (uint i = 2; i < 65; i++)	//This loop is not strictly necessary.  Simply initializes unused bytes to
-                                OUTBuffer[i] = 0xFF;		//0xFF for lower EMI and power consumption when driving the USB cable.
-                            //Now send the packet to the USB firmware on the microcontroller
-                            WriteFile(WriteHandleToUSBDevice, OUTBuffer, 65, ref BytesWritten, IntPtr.Zero);	//Blocking function, unless an "overlapped" structure is used
-                            ToggleLEDsPending = false;
-                        }
-                        */
-                    } //end of: if(AttachedState == true)
-                    else
-                    {
-                        Thread.Sleep(5);    //Add a small delay.  Otherwise, this while(true) loop can execute very fast and cause 
-                                            //high CPU utilization, with no particular benefit to the application.
                     }
-                }
-                catch
+
+                    // A packet has been sent (or the transfer has failed)
+                    // Inform the application by raising a PacketSent event if there are any subscribers
+                    if (RaisePacketSentEvent != null)
+                    {
+                        RaisePacketSentEvent(this, OutBuffer);
+                    }
+
+                    // Raise ReceivePacket event if there are any subscribers
+                    if (RaiseReceivePacketEvent != null)
+                    {
+                        // Ask the application if a packet should be requested
+                        RaiseReceivePacketEvent(this, InBuffer);
+                        // Receive packet if the application requested so
+                        if (InBuffer.RequestTransfer)
+                        {
+                            try
+                            {
+                                InBuffer.TransferSuccessful = ReadFileManagedBuffer(ReadHandleToUSBDevice, InBuffer.buffer, 65, ref BytesRead, IntPtr.Zero);
+                            }
+                            catch
+                            {
+                                InBuffer.TransferSuccessful = false;
+                            }
+                        }
+                    }
+
+                    // A packet has been received (or the transfer has failed)
+                    // Inform the application by raising a PacketReceived event if there are any subscribers
+                    if (RaisePacketReceivedEvent != null)
+                    {
+                        RaisePacketReceivedEvent(this, InBuffer);
+                    }
+                } // end of: if(AttachedState == true)
+                else
                 {
-                    //Exceptions can occur during the read or write operations.  For example,
-                    //exceptions may occur if for instance the USB device is physically unplugged
-                    //from the host while the above read/write functions are executing.
-
-                    //Don't need to do anything special in this case.  The application will automatically
-                    //re-establish communications based on the global AttachedState boolean variable used
-                    //in conjunction with the WM_DEVICECHANGE messages to dyanmically respond to Plug and Play
-                    //USB connection events.
+                    Thread.Sleep(5); // Add a small delay to avoid unnecessary CPU utilization
                 }
+            } // end of while(true) loop
+        } // end of ReadWriteThread_DoWork
 
-            } //end of while(true) loop
-            //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-            //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        }
-
-
-
-        //-------------------------------------------------------BEGIN CUT AND PASTE BLOCK-----------------------------------------------------------------------------------
 
         //--------------------------------------------------------------------------------------------------------------------------
         //FUNCTION:	ReadFileManagedBuffer()
@@ -840,6 +826,7 @@ namespace hid
         }
 
 
+        /*
         public void openDevice()
         {
             uint ErrorStatusWrite;
@@ -882,6 +869,7 @@ namespace hid
             AttachedState = false;
             AttachedButBroken = false;
         }
+        */
 
         public bool getAttachedState()
         {
@@ -892,38 +880,7 @@ namespace hid
         {
             return AttachedButBroken;
         }
-
-        /*
-        public uint getADCValue()
-        {
-            return ADCValue;
-        }
-
-        public void setADCValue(uint newValue)
-        {
-            ADCValue = newValue;
-        }
-
-        public bool getPushbuttonPressed()
-        {
-            return PushbuttonPressed;
-        }
-
-        public void setToggleLEDsPending()
-        {
-            ToggleLEDsPending = true;
-        }
-
-        public bool getToggleLEDsPending()
-        {
-            return ToggleLEDsPending;
-        }
-        */
-
-        //-------------------------------------------------------END CUT AND PASTE BLOCK-------------------------------------------------------------------------------------
-        //-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
+        
 
     }//hid_utility
 
