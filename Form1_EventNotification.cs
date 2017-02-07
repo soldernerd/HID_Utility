@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 
 namespace HID_PnP_Demo
 {
+    /*
     //Delegate declarations. These are used as callback functions to notify the application of USB events
     public delegate void deviceChange_delegate();
 
@@ -100,5 +101,6 @@ namespace HID_PnP_Demo
         }
 
     } // partial class Form1
+    */
 
 } // namespace HID_PnP_Demo

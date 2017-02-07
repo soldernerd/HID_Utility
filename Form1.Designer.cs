@@ -34,7 +34,6 @@ namespace HID_PnP_Demo
             this.AnalogLabel = new System.Windows.Forms.Label();
             this.StatusText = new System.Windows.Forms.Label();
             this.AnalogBar = new System.Windows.Forms.ProgressBar();
-            //this.ReadWriteThread = new System.ComponentModel.BackgroundWorker();
             this.FormUpdateTimer = new System.Windows.Forms.Timer(this.components);
             this.ANxVoltageToolTip = new System.Windows.Forms.ToolTip(this.components);
             this.ToggleLEDToolTip = new System.Windows.Forms.ToolTip(this.components);
@@ -54,7 +53,7 @@ namespace HID_PnP_Demo
             this.HorizontalBar1 = new System.Windows.Forms.Label();
             this.HorizontalBar2 = new System.Windows.Forms.Label();
             this.HorizontalBar3 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
+            this.CommunicationLabel = new System.Windows.Forms.Label();
             this.TxCountText = new System.Windows.Forms.Label();
             this.RxCountText = new System.Windows.Forms.Label();
             this.UptimeText = new System.Windows.Forms.Label();
@@ -103,11 +102,6 @@ namespace HID_PnP_Demo
             this.AnalogBar.Step = 1;
             this.AnalogBar.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             this.AnalogBar.TabIndex = 20;
-            // 
-            // ReadWriteThread
-            // 
-            //this.ReadWriteThread.WorkerReportsProgress = true;
-            //this.ReadWriteThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ReadWriteThread_DoWork);
             // 
             // FormUpdateTimer
             // 
@@ -211,7 +205,7 @@ namespace HID_PnP_Demo
             this.PidTextBox.Name = "PidTextBox";
             this.PidTextBox.Size = new System.Drawing.Size(55, 20);
             this.PidTextBox.TabIndex = 30;
-            this.PidTextBox.Text = "0x0000"; 
+            this.PidTextBox.Text = "0x0000";
             this.PidTextBox.KeyUp += new System.Windows.Forms.KeyEventHandler(this.PidTextBox_KeyUp);
             this.PidTextBox.LostFocus += new System.EventHandler(this.PidTextBox_LostFocus);
             // 
@@ -294,15 +288,15 @@ namespace HID_PnP_Demo
             this.HorizontalBar3.Size = new System.Drawing.Size(710, 4);
             this.HorizontalBar3.TabIndex = 38;
             // 
-            // label3
+            // CommunicationLabel
             // 
-            this.label3.AutoSize = true;
-            this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label3.Location = new System.Drawing.Point(12, 312);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(92, 13);
-            this.label3.TabIndex = 39;
-            this.label3.Text = "Communication";
+            this.CommunicationLabel.AutoSize = true;
+            this.CommunicationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.CommunicationLabel.Location = new System.Drawing.Point(12, 312);
+            this.CommunicationLabel.Name = "CommunicationLabel";
+            this.CommunicationLabel.Size = new System.Drawing.Size(92, 13);
+            this.CommunicationLabel.TabIndex = 39;
+            this.CommunicationLabel.Text = "Communication";
             // 
             // TxCountText
             // 
@@ -359,7 +353,7 @@ namespace HID_PnP_Demo
             this.Controls.Add(this.UptimeText);
             this.Controls.Add(this.RxCountText);
             this.Controls.Add(this.TxCountText);
-            this.Controls.Add(this.label3);
+            this.Controls.Add(this.CommunicationLabel);
             this.Controls.Add(this.HorizontalBar3);
             this.Controls.Add(this.HorizontalBar2);
             this.Controls.Add(this.HorizontalBar1);
@@ -409,7 +403,7 @@ namespace HID_PnP_Demo
         private System.Windows.Forms.Label HorizontalBar1;
         private System.Windows.Forms.Label HorizontalBar2;
         private System.Windows.Forms.Label HorizontalBar3;
-        private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.Label CommunicationLabel;
         private System.Windows.Forms.Label TxCountText;
         private System.Windows.Forms.Label RxCountText;
         private System.Windows.Forms.Label UptimeText;

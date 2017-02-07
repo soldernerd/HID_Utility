@@ -17,8 +17,6 @@ using System.Threading.Tasks;
 
 namespace hid
 {
-    
-
     internal static class UsbNotification
     {
         public const int DbtDevicearrival = 0x8000; // system detected a new device        
@@ -77,52 +75,56 @@ namespace hid
     //A class representing a USB device
     public class Device : EventArgs
     {
-        public string deviceId { get; private set; }
-        public string GUID { get; private set; }
-        public string hardwareID { get; private set; }
-        public string PnpID { get; private set; }
-        public string caption { get; private set; }
-        public string name { get; private set; }
-        public string manufacturer { get; private set; }
-        public string description { get; private set; }
-        public ushort pid { get; private set; }
-        public ushort vid { get; private set; }
+        public ushort Vid { get; private set; }
+        public ushort Pid { get; private set; }
+        public string DeviceID { get; private set; }
+        public string ClassGuid { get; private set; }
+        public string Caption { get; private set; }
+        public string Manufacturer { get; private set; }
 
-        public override string ToString()
+        public Device()
         {
-            return string.Format("{0} (VID=0x{1:X4} PID=0x{2:X4})", caption, vid, pid);
+            this.Vid = 0x0000;
+            this.Pid = 0x0000;
+            this.DeviceID = "";
+            this.ClassGuid = "";
+            this.Caption = "";
+            this.Manufacturer = "";
         }
 
-        public string getDevicePath()
+        public Device(ushort Vid, ushort Pid)
         {
-            return this.deviceId.Replace(@"\", @"#");
+            this.Vid = Vid;
+            this.Pid = Pid;
+            this.DeviceID = "";
+            this.ClassGuid = "";
+            this.Caption = "";
+            this.Manufacturer = "";
         }
 
         public Device(ManagementObject wmi_obj)
         {
-            this.deviceId = wmi_obj["DeviceID"].ToString();
-            this.GUID = wmi_obj["ClassGuid"].ToString();
-            string[] mystring = (string[])wmi_obj["HardwareID"];
-            this.hardwareID = "";
-            foreach (string s in mystring)
-                this.hardwareID += ", " + s;
-            this.PnpID = wmi_obj["PNPDeviceID"].ToString();
-            this.caption = wmi_obj["Caption"].ToString();
-            this.name = wmi_obj["Name"].ToString();
-            this.manufacturer = wmi_obj["Manufacturer"].ToString();
-            this.description = wmi_obj["Description"].ToString();
-            Match match = Regex.Match(this.deviceId, "PID_(.{4})", RegexOptions.IgnoreCase);
+            this.DeviceID = wmi_obj["DeviceID"].ToString();
+            this.ClassGuid = wmi_obj["ClassGuid"].ToString();
+            this.Caption = wmi_obj["Caption"].ToString();
+            this.Manufacturer = wmi_obj["Manufacturer"].ToString();
+            Match match = Regex.Match(this.DeviceID, "PID_(.{4})", RegexOptions.IgnoreCase);
             if (match.Success)
             {
                 string pid_string = match.Groups[1].Value;
-                pid = ushort.Parse(pid_string, System.Globalization.NumberStyles.HexNumber);
+                Pid = ushort.Parse(pid_string, System.Globalization.NumberStyles.HexNumber);
             }
-            match = Regex.Match(this.deviceId, "VID_(.{4})", RegexOptions.IgnoreCase);
+            match = Regex.Match(this.DeviceID, "VID_(.{4})", RegexOptions.IgnoreCase);
             if (match.Success)
             {
                 string vid_string = match.Groups[1].Value;
-                vid = ushort.Parse(vid_string, System.Globalization.NumberStyles.HexNumber);
+                Vid = ushort.Parse(vid_string, System.Globalization.NumberStyles.HexNumber);
             }
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0} (VID=0x{1:X4} PID=0x{2:X4})", Caption, Vid, Pid);
         }
     }
 
@@ -168,6 +170,7 @@ namespace hid
     {
         public delegate void DeviceAddedEventHandler(object sender, Device dev);
         public delegate void DeviceRemovedEventHandler(object sender, Device dev);
+        public delegate void ConnectionStatusChangedEventHandler(object sender, ConnectionStatusEventArgs e);
         public delegate void SendPacketEventHandler(object sender, UsbBuffer OutBuffer);
         public delegate void PacketSentEventHandler(object sender, UsbBuffer OutBuffer);
         public delegate void ReceivePacketEventHandler(object sender, UsbBuffer InBuffer);
@@ -175,15 +178,44 @@ namespace hid
 
         public event DeviceAddedEventHandler RaiseDeviceAddedEvent;
         public event DeviceRemovedEventHandler RaiseDeviceRemovedEvent;
+        public event ConnectionStatusChangedEventHandler RaiseConnectionStatusChangedEvent;
         public event SendPacketEventHandler RaiseSendPacketEvent;
         public event PacketSentEventHandler RaisePacketSentEvent;
         public event ReceivePacketEventHandler RaiseReceivePacketEvent;
         public event PacketReceivedEventHandler RaisePacketReceivedEvent;
 
         private List<string> DeviceIdList;
-        private List<Device> DeviceList;
+        public List<Device> DeviceList { get; private set; }
+        private Device DeviceToConnectTo;
+        SafeFileHandle WriteHandleToUSBDevice = null;
+        SafeFileHandle ReadHandleToUSBDevice = null;
 
         private System.ComponentModel.BackgroundWorker UsbThread;
+
+        public enum UsbConnectionStatus
+        {
+            Disconnected,
+            Connected,
+            NotWorking
+        }
+
+        public UsbConnectionStatus ConnectionStatus { get; private set; }
+
+        //A class representing a USB device
+        public class ConnectionStatusEventArgs : EventArgs
+        {
+            public UsbConnectionStatus ConnectionStatus { get; private set; }
+
+            public ConnectionStatusEventArgs(UsbConnectionStatus status)
+            {
+                this.ConnectionStatus = status;
+            }
+
+            public override string ToString()
+            {
+                return ConnectionStatus.ToString();
+            }
+        }
 
 
         //Constant definitions from setupapi.h, which we aren't allowed to include directly since this is C#
@@ -348,13 +380,10 @@ namespace hid
 
         //--------------- Global Varibles Section ------------------
         //USB related variables that need to have wide scope.
-        bool AttachedState = false;                     //Need to keep track of the USB device attachment status for proper plug and play operation.
-        bool AttachedButBroken = false;
-        SafeFileHandle WriteHandleToUSBDevice = null;
-        SafeFileHandle ReadHandleToUSBDevice = null;
-        String DevicePath = null;   //Need the find the proper device path before you can open file handles.
-
-        String globalDeviceIDFromRegistry;
+        //bool AttachedState = false;                     //Need to keep track of the USB device attachment status for proper plug and play operation.
+        //bool AttachedButBroken = false;
+        
+        //String DevicePath = null;   //Need the find the proper device path before you can open file handles.
 
         //Globally Unique Identifier (GUID) for HID class devices.  Windows uses GUIDs to identify things.
         Guid InterfaceClassGuid = new Guid(0x4d1e55b2, 0xf16f, 0x11cf, 0x88, 0xcb, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30);
@@ -381,12 +410,12 @@ namespace hid
             for (int i = DeviceList.Count - 1; i >= 0; i--)
             {
                 //Check if device is in the list of removed devices
-                if (RemovedDeviceIdList.Contains(DeviceList[i].deviceId))
+                if (RemovedDeviceIdList.Contains(DeviceList[i].DeviceID))
                 {
                     //Remove device from DeviceList
                     DeviceList.RemoveAt(i);
                     //Remove deviceId from DeviceIdList
-                    DeviceIdList.Remove(DeviceList[i].deviceId);
+                    DeviceIdList.Remove(DeviceList[i].DeviceID);
                     //Raise event if there are any subscribers
                     if (RaiseDeviceRemovedEvent != null)
                     {
@@ -394,13 +423,18 @@ namespace hid
                     }
                 }
             }
+            // Check if our device has been disconnected
+            if (ConnectionStatus != UsbConnectionStatus.Connected)
+            {
+                SelectDevice(DeviceToConnectTo);
+            }
         }
 
         async void OnDeviceAdded()
         {
-            //Return immediately and do all the work asynchronously
+            // Return immediately and do all the work asynchronously
             await Task.Yield();
-            //Get a list with the device IDs of all removed devices
+            // Get a list with the device IDs of all removed devices
             List<string> NewDeviceIdList = getDeviceIdList();
             List<string> AddedDeviceIdList = new List<string>();
             foreach (string devId in NewDeviceIdList)
@@ -410,24 +444,29 @@ namespace hid
                     AddedDeviceIdList.Add(devId);
                 }
             }
-            //Get more information
+            // Get more information
             List<Device> NewDeviceList = getDeviceList();
-            //Loop through all devices
+            // Loop through all devices
             foreach(Device dev in NewDeviceList)
             {
-                //Check if device is in the list of added devices
-                if (AddedDeviceIdList.Contains(dev.deviceId))
+                // Check if device is in the list of added devices
+                if (AddedDeviceIdList.Contains(dev.DeviceID))
                 {
-                    //Add device to DeviceList
+                    // Add device to DeviceList
                     DeviceList.Add(dev);
-                    //Add deviceId to DeviceIdList
-                    DeviceIdList.Add(dev.deviceId);
-                    //Raise event if there are any subscribers
+                    // Add deviceId to DeviceIdList
+                    DeviceIdList.Add(dev.DeviceID);
+                    // Raise event if there are any subscribers
                     if (RaiseDeviceRemovedEvent != null)
                     {
                         RaiseDeviceAddedEvent(this, dev);
                     }
                 }
+            }
+            // Try to connect to the device if we are not already connected
+            if(ConnectionStatus!=UsbConnectionStatus.Connected)
+            {
+                SelectDevice(DeviceToConnectTo);
             }
         }
 
@@ -462,6 +501,7 @@ namespace hid
         //public HidUtility(sendPacket_delegate sendPacket_h, packetSent_delegate packetSent_h, receivePacket_delegate receivePacket_h, packetReceived_delegate packetReceived_h)
         public HidUtility()
         {
+            DeviceToConnectTo = new Device();
             DeviceIdList = getDeviceIdList();
             DeviceList = getDeviceList();
 
@@ -470,11 +510,26 @@ namespace hid
 
             UsbThread = new System.ComponentModel.BackgroundWorker();
             UsbThread.DoWork += new System.ComponentModel.DoWorkEventHandler(UsbThread_DoWork);
-
+            UsbThread.RunWorkerAsync();
         }
 
-        
+        public void SelectDevice(Device dev)
+        {
+            // Save the device for future use
+            this.DeviceToConnectTo = dev;
+            // Close any device already connected
+            CloseDevice();
+            // Try to obtain a device path
+            String DevicePath = GetDevicePath(this.DeviceToConnectTo);
+            // Try to connect if a device path has been obtained
+            if(DevicePath!=null)
+            {
+                OpenDevice(DevicePath);
+            }
+        }
 
+        // Returns a list with the device IDs of all HID devices
+        // Filters may be removed if a complete list of USB devices is desired
         private List<string> getDeviceIdList()
         {
             List<string> deviceIDs = new List<string>();
@@ -497,7 +552,8 @@ namespace hid
             return deviceIDs;
         }
 
-        public List<Device> getDeviceList()
+        // Returns a list of Device object representing all devices returned by getDeviceIdList()
+        private List<Device> getDeviceList()
         {
             List<Device> devices = new List<Device>();
             List<string> deviceIDs = getDeviceIdList();
@@ -517,10 +573,11 @@ namespace hid
             return devices;
         }
 
+        /*
         public List<Device> getDeviceList(ushort Vid, ushort Pid)
         {
             List<Device> devices = getDeviceList();
-            var qry = devices.Where(d => d.pid == Pid && d.vid == Vid);
+            var qry = devices.Where(d => d.Pid == Pid && d.Vid == Vid);
             List<Device> matchingDevices = new List<Device>();
             foreach (Device dev in qry)
             {
@@ -534,53 +591,63 @@ namespace hid
             List<Device> devices = getDeviceList();
             try
             {
-                return devices.Where(d => d.pid == Pid && d.vid == Vid).Last();
+                return devices.Where(d => d.Pid == Pid && d.Vid == Vid).Last();
             }
             catch
             {
                 return null;
             }
         }
+        */
 
         
-        public bool FindDevice(string DeviceIdSubstring)
+        private String GetDevicePath(Device dev)
         {
-             /*
-		    Before we can "connect" our application to our USB embedded device, we must first find the device.
-		    A USB bus can have many devices simultaneously connected, so somehow we have to find our device only.
-		    This is done with the Vendor ID (VID) and Product ID (PID).  Each USB product line should have
-		    a unique combination of VID and PID.  
+            /*
+           Before we can "connect" our application to our USB embedded device, we must first find the device.
+           A USB bus can have many devices simultaneously connected, so somehow we have to find our device only.
+           This is done with the Vendor ID (VID) and Product ID (PID).  Each USB product line should have
+           a unique combination of VID and PID.  
 
-		    Microsoft has created a number of functions which are useful for finding plug and play devices.  Documentation
-		    for each function used can be found in the MSDN library.  We will be using the following functions (unmanaged C functions):
+           Microsoft has created a number of functions which are useful for finding plug and play devices.  Documentation
+           for each function used can be found in the MSDN library.  We will be using the following functions (unmanaged C functions):
 
-		    SetupDiGetClassDevs()					//provided by setupapi.dll, which comes with Windows
-		    SetupDiEnumDeviceInterfaces()			//provided by setupapi.dll, which comes with Windows
-		    GetLastError()							//provided by kernel32.dll, which comes with Windows
-		    SetupDiDestroyDeviceInfoList()			//provided by setupapi.dll, which comes with Windows
-		    SetupDiGetDeviceInterfaceDetail()		//provided by setupapi.dll, which comes with Windows
-		    SetupDiGetDeviceRegistryProperty()		//provided by setupapi.dll, which comes with Windows
-		    CreateFile()							//provided by kernel32.dll, which comes with Windows
+           SetupDiGetClassDevs()					//provided by setupapi.dll, which comes with Windows
+           SetupDiEnumDeviceInterfaces()			//provided by setupapi.dll, which comes with Windows
+           GetLastError()							//provided by kernel32.dll, which comes with Windows
+           SetupDiDestroyDeviceInfoList()			//provided by setupapi.dll, which comes with Windows
+           SetupDiGetDeviceInterfaceDetail()		//provided by setupapi.dll, which comes with Windows
+           SetupDiGetDeviceRegistryProperty()		//provided by setupapi.dll, which comes with Windows
+           CreateFile()							//provided by kernel32.dll, which comes with Windows
 
-            In order to call these unmanaged functions, the Marshal class is very useful.
-             
-		    We will also be using the following unusual data types and structures.  Documentation can also be found in
-		    the MSDN library:
+           In order to call these unmanaged functions, the Marshal class is very useful.
 
-		    PSP_DEVICE_INTERFACE_DATA
-		    PSP_DEVICE_INTERFACE_DETAIL_DATA
-		    SP_DEVINFO_DATA
-		    HDEVINFO
-		    HANDLE
-		    GUID
+           We will also be using the following unusual data types and structures.  Documentation can also be found in
+           the MSDN library:
 
-		    The ultimate objective of the following code is to get the device path, which will be used elsewhere for getting
-		    read and write handles to the USB device.  Once the read/write handles are opened, only then can this
-		    PC application begin reading/writing to the USB device using the WriteFile() and ReadFile() functions.
+           PSP_DEVICE_INTERFACE_DATA
+           PSP_DEVICE_INTERFACE_DETAIL_DATA
+           SP_DEVINFO_DATA
+           HDEVINFO
+           HANDLE
+           GUID
 
-		    Getting the device path is a multi-step round about process, which requires calling several of the
-		    SetupDixxx() functions provided by setupapi.dll.
-		    */
+           The ultimate objective of the following code is to get the device path, which will be used elsewhere for getting
+           read and write handles to the USB device.  Once the read/write handles are opened, only then can this
+           PC application begin reading/writing to the USB device using the WriteFile() and ReadFile() functions.
+
+           Getting the device path is a multi-step round about process, which requires calling several of the
+           SetupDixxx() functions provided by setupapi.dll.
+           */
+
+            //Device path we are trying to get
+            String devicePath;
+            // The device ID from the registry should contain this string (when ignoring upper/lower case)
+            string DeviceIdSubstring = string.Format("Vid_{0:X4}&Pid_{1:X4}", dev.Vid, dev.Pid);
+            DeviceIdSubstring = DeviceIdSubstring.ToLowerInvariant();
+            // The device path should contain this string (when ignoring upper/lower case)
+            string DevicePathSubstring = dev.DeviceID.Replace(@"\", @"#");
+            DevicePathSubstring = DevicePathSubstring.ToLowerInvariant();
 
             try
             {
@@ -595,20 +662,11 @@ namespace hid
                 uint dwRegSize2 = 0;
                 uint StructureSize = 0;
                 IntPtr PropertyValueBuffer = IntPtr.Zero;
-                bool MatchFound = false;
                 uint ErrorStatus;
                 uint LoopCounter = 0;
 
-                //Use the formatting: "Vid_xxxx&Pid_xxxx" where xxxx is a 16-bit hexadecimal number.
-                //Make sure the value appearing in the parathesis matches the USB device descriptor
-                //of the device that this aplication is intending to find.
-                //String DeviceIDToFind = "Vid_04d8&Pid_003f";
-                //String DeviceIDToFind = "VID_04D9&PID_1603";
-
                 //First populate a list of plugged in devices (by specifying "DIGCF_PRESENT"), which are of the specified class GUID. 
                 DeviceInfoTable = SetupDiGetClassDevs(ref InterfaceClassGuid, IntPtr.Zero, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-
-
 
                 if (DeviceInfoTable != IntPtr.Zero)
                 {
@@ -622,14 +680,14 @@ namespace hid
                             if (ErrorStatus == ERROR_NO_MORE_ITEMS) //Did we reach the end of the list of matching devices in the DeviceInfoTable?
                             {   //Cound not find the device.  Must not have been attached.
                                 SetupDiDestroyDeviceInfoList(DeviceInfoTable);  //Clean up the old structure we no longer need.
-                                return false;
+                                return null;
                             }
                         }
                         else    //Else some other kind of unknown error ocurred...
                         {
                             ErrorStatus = (uint)Marshal.GetLastWin32Error();
                             SetupDiDestroyDeviceInfoList(DeviceInfoTable);  //Clean up the old structure we no longer need.
-                            return false;
+                            return null;
                         }
 
                         //Now retrieve the hardware ID from the registry.  The hardware ID contains the VID and PID, which we will then 
@@ -657,14 +715,9 @@ namespace hid
 
                         Marshal.FreeHGlobal(PropertyValueBuffer);		//No longer need the PropertyValueBuffer, free the memory to prevent potential memory leaks
 
-                        //Convert both strings to lower case.  This makes the code more robust/portable accross OS Versions
-                        DeviceIDFromRegistry = DeviceIDFromRegistry.ToLowerInvariant();
-                        DeviceIdSubstring = DeviceIdSubstring.ToLowerInvariant();
-                        //Now check if the hardware ID we are looking at contains the correct VID/PID
-                        MatchFound = DeviceIDFromRegistry.Contains(DeviceIdSubstring);
-                        if (MatchFound == true)
+                        //Now check if the hardware ID we are looking at contains the correct VID/PID (ignore upper/lower case)
+                        if (DeviceIDFromRegistry.ToLowerInvariant().Contains(DeviceIdSubstring))
                         {
-                            globalDeviceIDFromRegistry = DeviceIDFromRegistry;
                             //Device must have been found.  In order to open I/O file handle(s), we will need the actual device path first.
                             //We can get the path by calling SetupDiGetDeviceInterfaceDetail(), however, we have to call this function twice:  The first
                             //time to get the size of the required structure/buffer to hold the detailed interface data, then a second time to actually 
@@ -684,19 +737,23 @@ namespace hid
                             {
                                 //Need to extract the path information from the unmanaged "structure".  The path starts at (pUnmanagedDetailedInterfaceDataStructure + sizeof(DWORD)).
                                 IntPtr pToDevicePath = new IntPtr((uint)pUnmanagedDetailedInterfaceDataStructure.ToInt32() + 4);  //Add 4 to the pointer (to get the pointer to point to the path, instead of the DWORD cbSize parameter)
-                                DevicePath = Marshal.PtrToStringUni(pToDevicePath); //Now copy the path information into the globally defined DevicePath String.
+                                devicePath = Marshal.PtrToStringUni(pToDevicePath); //Now copy the path information into the globally defined DevicePath String.
 
-                                //We now have the proper device path, and we can finally use the path to open I/O handle(s) to the device.
-                                SetupDiDestroyDeviceInfoList(DeviceInfoTable);	//Clean up the old structure we no longer need.
-                                Marshal.FreeHGlobal(pUnmanagedDetailedInterfaceDataStructure);  //No longer need this unmanaged SP_DEVICE_INTERFACE_DETAIL_DATA buffer.  We already extracted the path information.
-                                return true;    //Returning the device path in the global DevicePath String
+                                //Now check if the device path we are looking at contains the substring (ignore upper/lower case) 
+                                if(devicePath.ToLowerInvariant().Contains(DevicePathSubstring))
+                                {
+                                    //We now have the proper device path, and we can finally use the path to open I/O handle(s) to the device.
+                                    SetupDiDestroyDeviceInfoList(DeviceInfoTable);  //Clean up the old structure we no longer need.
+                                    Marshal.FreeHGlobal(pUnmanagedDetailedInterfaceDataStructure);  //No longer need this unmanaged SP_DEVICE_INTERFACE_DETAIL_DATA buffer.  We already extracted the path information.
+                                    return devicePath;    //Returning the device path
+                                }
                             }
                             else //Some unknown failure occurred
                             {
                                 uint ErrorCode = (uint)Marshal.GetLastWin32Error();
                                 SetupDiDestroyDeviceInfoList(DeviceInfoTable);	//Clean up the old structure.
                                 Marshal.FreeHGlobal(pUnmanagedDetailedInterfaceDataStructure);  //No longer need this unmanaged SP_DEVICE_INTERFACE_DETAIL_DATA buffer.  We already extracted the path information.
-                                return false;
+                                return null;
                             }
                         }
 
@@ -705,31 +762,21 @@ namespace hid
                         //However, just in case some unexpected error occurs, keep track of the number of loops executed.
                         //If the number of loops exceeds a very large number, exit anyway, to prevent inadvertent infinite looping.
                         LoopCounter++;
-                        if (LoopCounter == 10000000)    //Surely there aren't more than 10 million devices attached to any forseeable PC...
+                        if (LoopCounter == 10000)    //Surely there aren't more than 10'000 devices attached to any forseeable PC...
                         {
-                            return false;
+                            return null;
                         }
                     }//end of while(true)
                 }
-
-                return false;
+                return null;
             }//end of try
             catch
             {
                 //Something went wrong if PC gets here.  Maybe a Marshal.AllocHGlobal() failed due to insufficient resources or something.
-                return false;
+                return null;
             }
         } //findDevice
-        
-        public string getDevicePath()
-        {
-            return DevicePath;
-        }
-
-        public String getDeviceIdFromRegistry()
-        {
-            return globalDeviceIDFromRegistry;
-        }
+    
 
         public void UsbThread_DoWork(object sender, DoWorkEventArgs e)
         {
@@ -741,7 +788,7 @@ namespace hid
             while (true)
             {
                 //Do not try to use the read/write handles unless the USB device is attached and ready
-                if (AttachedState == true)
+                if (ConnectionStatus == UsbConnectionStatus.Connected)
                 {
                     // Raise SendPacket event if there are any subscribers
                     if (RaiseSendPacketEvent != null)
@@ -850,59 +897,64 @@ namespace hid
 
 
         
-        public void OpenDevice()
+        public void OpenDevice(String DevicePath)
         {
             uint ErrorStatusWrite;
             uint ErrorStatusRead;
-
-            AttachedState = false;
-            AttachedButBroken = false;
-
-            //We now have the proper device path, and we can finally open read and write handles to the device.
+            // Close device first
+            CloseDevice();
+            // Open WriteHandle
             WriteHandleToUSBDevice = CreateFile(DevicePath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
             ErrorStatusWrite = (uint)Marshal.GetLastWin32Error();
+            // Open ReadHandle
             ReadHandleToUSBDevice = CreateFile(DevicePath, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
             ErrorStatusRead = (uint)Marshal.GetLastWin32Error();
-
+            // Check if both handles were opened successfully
             if ((ErrorStatusWrite == ERROR_SUCCESS) && (ErrorStatusRead == ERROR_SUCCESS))
             {
-                AttachedState = true;       //Let the rest of the PC application know the USB device is connected, and it is safe to read/write to it
-                AttachedButBroken = false;
-                //StatusBox_txtbx.Text = "Device Found, AttachedState = TRUE";
+                ConnectionStatus = UsbConnectionStatus.Connected;
             }
-            else //for some reason the device was physically plugged in, but one or both of the read/write handles didn't open successfully...
+            else // For some reason the device was physically plugged in, but one or both of the read/write handles didn't open successfully
             {
-                AttachedState = false;      //Let the rest of this application known not to read/write to the device.
-                AttachedButBroken = true;   //Flag so that next time a WM_DEVICECHANGE message occurs, can retry to re-open read/write pipes
+                ConnectionStatus = UsbConnectionStatus.NotWorking;
                 if (ErrorStatusWrite == ERROR_SUCCESS)
+                {
                     WriteHandleToUSBDevice.Close();
+                }
+                    
                 if (ErrorStatusRead == ERROR_SUCCESS)
+                {
                     ReadHandleToUSBDevice.Close();
+                }  
+            }
+            // Raise event if there are any subscribers
+            if (RaiseConnectionStatusChangedEvent != null)
+            {
+                RaiseConnectionStatusChangedEvent(this, new ConnectionStatusEventArgs(ConnectionStatus));
             }
         }
 
-        /*
-        public void closeDevice()
+        // Close connection to the USB device
+        public void CloseDevice()
         {
-            if (AttachedState == true)      //If it is currently set to true, that means the device was just now disconnected
+            // Save current status
+            UsbConnectionStatus previousStatus = ConnectionStatus;
+            // Close write and read handles if a device is connected
+            if (ConnectionStatus==UsbConnectionStatus.Connected)      
             {
-                AttachedState = false;
                 WriteHandleToUSBDevice.Close();
                 ReadHandleToUSBDevice.Close();
             }
-            AttachedState = false;
-            AttachedButBroken = false;
-        }
-        */
-
-        public bool getAttachedState()
-        {
-            return AttachedState;
-        }
-
-        public bool getAttachedButBroken()
-        {
-            return AttachedButBroken;
+            // Set status to disconnected
+            ConnectionStatus = UsbConnectionStatus.Disconnected;
+            // Raise event if the status has changed and if there are any subscribers
+            if(ConnectionStatus!=previousStatus)
+            {
+                if (RaiseConnectionStatusChangedEvent != null)
+                {
+                    RaiseConnectionStatusChangedEvent(this, new ConnectionStatusEventArgs(ConnectionStatus));
+                }
+            }
         }
         
 
