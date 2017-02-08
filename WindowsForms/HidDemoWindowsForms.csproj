@@ -8,8 +8,8 @@
     <ProjectGuid>{16F6C5BD-2B6A-46A1-96E6-7BEB4E0AB5E7}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>HID_PnP_Demo</RootNamespace>
-    <AssemblyName>HID PnP Demo</AssemblyName>
+    <RootNamespace>HidDemoWindowsForms</RootNamespace>
+    <AssemblyName>HidDemoWindowsForms</AssemblyName>
     <TargetZone>Custom</TargetZone>
     <GenerateManifests>false</GenerateManifests>
     <ExcludedPermissions>
