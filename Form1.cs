@@ -62,7 +62,7 @@ namespace HID_PnP_Demo
                     this.UptimeText.Text = tmp;
                 }
                 //Update TX statistics
-                tmp = string.Format("Packets sent (failed): {0} (1})", TxCount, TxFailedCount);
+                tmp = string.Format("Packets sent (failed): {0} ({1})", TxCount, TxFailedCount);
                 if(TxCountText.Text!=tmp)
                 {
                     TxCountText.Text = tmp;
@@ -70,14 +70,14 @@ namespace HID_PnP_Demo
                 if (TxCount != 0)
                 {
                     
-                    tmp = string.Format("TX Speed: {0} packets per second", TxCount/uptime.TotalSeconds);
+                    tmp = string.Format("TX Speed: {0:0.00} packets per second", TxCount/uptime.TotalSeconds);
                     if (TxSpeedText.Text != tmp)
                     {
                         TxSpeedText.Text = tmp;
                     }
                 }
                 //Update RX statistics
-                tmp = string.Format("Packets sent (failed): {0} (1})", RxCount, RxFailedCount);
+                tmp = string.Format("Packets received (failed): {0} ({1})", RxCount, RxFailedCount);
                 if (RxCountText.Text != tmp)
                 {
                     RxCountText.Text = tmp;
@@ -85,7 +85,7 @@ namespace HID_PnP_Demo
                 if (RxCount != 0)
                 {
 
-                    tmp = string.Format("RX Speed: {0} packets per second", RxCount / uptime.TotalSeconds);
+                    tmp = string.Format("RX Speed: {0:0.00} packets per second", RxCount / uptime.TotalSeconds);
                     if (RxSpeedText.Text != tmp)
                     {
                         RxSpeedText.Text = tmp;
@@ -99,7 +99,6 @@ namespace HID_PnP_Demo
                 TxSpeedText.Text = "Rx Speed: n/a";
                 RxCountText.Text = "Packets received (failed): -";
                 RxSpeedText.Text = "RX Speed: n/a";
-                
             }
 
         }
@@ -268,10 +267,13 @@ namespace HID_PnP_Demo
                     break;
                 case HidUtility.UsbConnectionStatus.Disconnected:
                     StatusText.Text = string.Format("Device Not Detected (Connection status = {0})", e.ConnectionStatus.ToString());
+                    AnalogBar.Value = 0;
                     SetUserInterfaceStatus(false);
+                    
                     break;
                 case HidUtility.UsbConnectionStatus.NotWorking:
                     StatusText.Text = string.Format("Device attached but not working (Connection status = {0})", e.ConnectionStatus.ToString());
+                    AnalogBar.Value = 0;
                     SetUserInterfaceStatus(false);
                     break;
             }
@@ -291,6 +293,7 @@ namespace HID_PnP_Demo
                 // 0x80 is the "Toggle LED" command in the firmware
                 OutBuffer.buffer[1] = 0x80; 
                 ToggleLedPending = false;
+                LastCommand = 0x80;
             }
             else if (LastCommand==0x81)
             {
@@ -316,7 +319,15 @@ namespace HID_PnP_Demo
         // Schedule to request a packet if the transfer was successful
         public void PacketSentHandler(object sender, UsbBuffer OutBuffer)
         {
-            WaitingForDevice = OutBuffer.TransferSuccessful;
+            if(LastCommand == 0x80)
+            {
+                WaitingForDevice = false;
+            }
+            else
+            {
+                WaitingForDevice = OutBuffer.TransferSuccessful;
+            }
+            
             if(OutBuffer.TransferSuccessful)
             {
                 ++TxCount;
@@ -332,11 +343,15 @@ namespace HID_PnP_Demo
         public void ReceivePacketHandler(object sender, UsbBuffer InBuffer)
         {
             InBuffer.RequestTransfer = WaitingForDevice;
+            //WriteLog(string.Format("ReceivePacketHandler: {0}", WaitingForDevice), false);
+
         }
 
         // HidUtility informs us if the requested transfer was successful and provides us with the received packet
         public void PacketReceivedHandler(object sender, UsbBuffer InBuffer)
         {
+            //WriteLog(string.Format("PacketReceivedHandler: {0:X2}", InBuffer.buffer[1]), false);
+            WaitingForDevice = false;
             if (InBuffer.buffer[1] == 0x37)
             {
                 //Need to reformat the data from two unsigned chars into one unsigned int.

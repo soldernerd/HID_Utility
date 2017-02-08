@@ -148,9 +148,10 @@ namespace hid
             set;
         }
 
-        public UsbBuffer()
+        public UsbBuffer(byte[] buffer)
         {
-            buffer = new byte[65];
+            //buffer = new byte[65];
+            this.buffer = buffer;
             RequestTransfer = false;
             TransferSuccessful = false;
             clear();
@@ -424,7 +425,7 @@ namespace hid
                 }
             }
             // Check if our device has been disconnected
-            if (ConnectionStatus != UsbConnectionStatus.Connected)
+            if (ConnectionStatus != UsbConnectionStatus.Disconnected)
             {
                 SelectDevice(DeviceToConnectTo);
             }
@@ -780,8 +781,10 @@ namespace hid
 
         public void UsbThread_DoWork(object sender, DoWorkEventArgs e)
         {
-            UsbBuffer OutBuffer = new UsbBuffer();
-            UsbBuffer InBuffer = new UsbBuffer();
+            byte[] OutBufferArray = new byte[65];
+            byte[] InBufferArray = new byte[65];
+            UsbBuffer OutBuffer = new UsbBuffer(OutBufferArray);
+            UsbBuffer InBuffer = new UsbBuffer(InBufferArray);
             uint BytesWritten = 0;
             uint BytesRead = 0;
 
@@ -790,30 +793,38 @@ namespace hid
                 //Do not try to use the read/write handles unless the USB device is attached and ready
                 if (ConnectionStatus == UsbConnectionStatus.Connected)
                 {
+
                     // Raise SendPacket event if there are any subscribers
                     if (RaiseSendPacketEvent != null)
                     {
                         //Ask the application if a packet should be sent and let it prepare the data to be sent
                         RaiseSendPacketEvent(this, OutBuffer);
-                        //Send packet if the application requested so
-                        if(OutBuffer.RequestTransfer)
-                        {
-                            try
-                            {
-                                OutBuffer.TransferSuccessful = WriteFile(WriteHandleToUSBDevice, OutBuffer.buffer, 65, ref BytesWritten, IntPtr.Zero);
-                            }
-                            catch
-                            {
-                                OutBuffer.TransferSuccessful = false;
-                            }
-                        }
                     }
 
-                    // A packet has been sent (or the transfer has failed)
-                    // Inform the application by raising a PacketSent event if there are any subscribers
-                    if (RaisePacketSentEvent != null)
+                    //Send packet if the application requested so
+                    if(OutBuffer.RequestTransfer)
                     {
-                        RaisePacketSentEvent(this, OutBuffer);
+                        try
+                        {
+                            /*
+                            byte[] buf = new byte[65];
+                            buf[0] = OutBuffer.buffer[0];
+                            buf[1] = OutBuffer.buffer[1];
+                            buf[2] = OutBuffer.buffer[2];
+                            */
+                            OutBuffer.TransferSuccessful = WriteFile(WriteHandleToUSBDevice, OutBufferArray, 65, ref BytesWritten, IntPtr.Zero);
+                        }
+                        catch
+                        {
+                            OutBuffer.TransferSuccessful = false;
+                        }
+
+                        // A packet has been sent (or the transfer has failed)
+                        // Inform the application by raising a PacketSent event if there are any subscribers
+                        if (RaisePacketSentEvent != null)
+                        {
+                            RaisePacketSentEvent(this, OutBuffer);
+                        }
                     }
 
                     // Raise ReceivePacket event if there are any subscribers
@@ -821,26 +832,29 @@ namespace hid
                     {
                         // Ask the application if a packet should be requested
                         RaiseReceivePacketEvent(this, InBuffer);
-                        // Receive packet if the application requested so
-                        if (InBuffer.RequestTransfer)
+                    }
+
+                    // Receive packet if the application requested so
+                    if (InBuffer.RequestTransfer)
+                    {
+                        try
                         {
-                            try
-                            {
-                                InBuffer.TransferSuccessful = ReadFileManagedBuffer(ReadHandleToUSBDevice, InBuffer.buffer, 65, ref BytesRead, IntPtr.Zero);
-                            }
-                            catch
-                            {
-                                InBuffer.TransferSuccessful = false;
-                            }
+                            InBuffer.TransferSuccessful = ReadFileManagedBuffer(ReadHandleToUSBDevice, InBufferArray, 65, ref BytesRead, IntPtr.Zero);
+                        }
+                        catch
+                        {
+                            InBuffer.TransferSuccessful = false;
+                        }
+
+                        // A packet has been received (or the transfer has failed)
+                        // Inform the application by raising a PacketReceived event if there are any subscribers
+                        if (RaisePacketReceivedEvent != null)
+                        {
+                            RaisePacketReceivedEvent(this, InBuffer);
                         }
                     }
 
-                    // A packet has been received (or the transfer has failed)
-                    // Inform the application by raising a PacketReceived event if there are any subscribers
-                    if (RaisePacketReceivedEvent != null)
-                    {
-                        RaisePacketReceivedEvent(this, InBuffer);
-                    }
+                    
                 } // end of: if(AttachedState == true)
                 else
                 {
@@ -932,6 +946,11 @@ namespace hid
             {
                 RaiseConnectionStatusChangedEvent(this, new ConnectionStatusEventArgs(ConnectionStatus));
             }
+            // Start async thread if connection has been established
+            if (ConnectionStatus == UsbConnectionStatus.Connected)
+            {
+                //UsbThread.RunWorkerAsync();
+            }
         }
 
         // Close connection to the USB device
@@ -947,8 +966,10 @@ namespace hid
             }
             // Set status to disconnected
             ConnectionStatus = UsbConnectionStatus.Disconnected;
+            // Stop async thread if connection has been established
+            //UsbThread.CancelAsync();
             // Raise event if the status has changed and if there are any subscribers
-            if(ConnectionStatus!=previousStatus)
+            if (ConnectionStatus!=previousStatus)
             {
                 if (RaiseConnectionStatusChangedEvent != null)
                 {
