@@ -1,1 +1,0 @@
-U:\DATEN\Visual Studio 2015\Projects\hid\bin\x86\Release\HID PnP Demo.exe.config
