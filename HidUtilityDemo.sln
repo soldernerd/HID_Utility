@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HID PnP Demo", "HID PnP Demo.csproj", "{16F6C5BD-2B6A-46A1-96E6-7BEB4E0AB5E7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HidDemoWindowsForms", "WindowsForms\HidDemoWindowsForms.csproj", "{16F6C5BD-2B6A-46A1-96E6-7BEB4E0AB5E7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

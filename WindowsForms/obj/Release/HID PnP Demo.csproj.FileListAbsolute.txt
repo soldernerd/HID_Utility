@@ -1,0 +1,9 @@
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Release\HID PnP Demo.exe.config
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Release\HID PnP Demo.exe
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Release\HID PnP Demo.pdb
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID_PnP_Demo.Form1.resources
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID_PnP_Demo.Properties.Resources.resources
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID PnP Demo.csproj.GenerateResource.Cache
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID PnP Demo.exe
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID PnP Demo.pdb
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Release\HID PnP Demo.csprojResolveAssemblyReference.cache

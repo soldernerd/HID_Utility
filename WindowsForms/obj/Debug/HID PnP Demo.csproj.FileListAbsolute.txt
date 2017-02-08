@@ -1,0 +1,17 @@
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Debug\HID PnP Demo.exe.config
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Debug\HID PnP Demo.exe
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\bin\Debug\HID PnP Demo.pdb
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Debug\HID_PnP_Demo.Form1.resources
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Debug\HID_PnP_Demo.Properties.Resources.resources
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Debug\HID PnP Demo.csproj.GenerateResource.Cache
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Debug\HID PnP Demo.exe
+\\zrh-s107\usersb$\vbfaw\DATEN\Visual Studio 2015\Projects\hid\obj\Debug\HID PnP Demo.pdb
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\Debug\HID PnP Demo.exe.config
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID PnP Demo.exe
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID PnP Demo.pdb
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID PnP Demo.csprojResolveAssemblyReference.cache
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID_PnP_Demo.Form1.resources
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID_PnP_Demo.Properties.Resources.resources
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\Debug\HID PnP Demo.csproj.GenerateResource.Cache
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\Debug\HID PnP Demo.exe
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\Debug\HID PnP Demo.pdb

@@ -1,0 +1,8 @@
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\x86\Debug\HID PnP Demo.exe.config
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\x86\Debug\HID PnP Demo.exe
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\x86\Debug\HID PnP Demo.pdb
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\x86\Debug\HID PnP Demo.exe
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\bin\x86\Debug\HID PnP Demo.pdb
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\x86\Debug\HID_PnP_Demo.Form1.resources
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\x86\Debug\HID_PnP_Demo.Properties.Resources.resources
+U:\DATEN\Visual Studio 2015\Projects\hid\WindowsForms\obj\x86\Debug\HidDemoWindowsForms.csproj.GenerateResource.Cache
