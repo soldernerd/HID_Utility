@@ -157,8 +157,8 @@ namespace HID_PnP_Demo
             }
             try
             {
-                ushort vid = ushort.Parse(input, System.Globalization.NumberStyles.HexNumber);
-                return vid;
+                ushort value = ushort.Parse(input, System.Globalization.NumberStyles.HexNumber);
+                return value;
             }
             catch
             {
