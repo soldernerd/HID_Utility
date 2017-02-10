@@ -300,6 +300,8 @@ namespace HidDemoWpf
                 PropertyChanged(this, new PropertyChangedEventArgs("PushbuttonContentTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("LedTogglePendingTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
+                //debug
+                PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceColor"));
             }
         }
 
@@ -327,6 +329,17 @@ namespace HidDemoWpf
                     return true;
                 else
                     return false;
+            }
+        }
+
+        public string UserInterfaceColor
+        {
+            get
+            {
+                if (communicator.HidUtil.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
+                    return "Black";
+                else
+                    return "Gray";
             }
         }
 
@@ -376,6 +389,8 @@ namespace HidDemoWpf
                 PropertyChanged(this, new PropertyChangedEventArgs("ConnectionStatusTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("UptimeTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
+                PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceActive"));
+                PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceColor"));
             }
         }
 
@@ -520,6 +535,8 @@ namespace HidDemoWpf
                     return "Successfully sent: -";
             }            
         }
+
+        
 
         public string TxFailedTxt
         {
