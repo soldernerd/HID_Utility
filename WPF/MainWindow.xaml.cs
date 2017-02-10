@@ -30,12 +30,36 @@ namespace HidDemoWpf
             InitializeComponent();
         }
 
-        /*
-        public void VidTextBoxChangedEvent()
+        // Update when focus is lost
+        public void FocusLostHandler(object sender, EventArgs e)
         {
-            Vid_TextBox.GetBindingExpression(TextBox.TextProperty).UpdateSource();
+            try
+            {
+                TextBox tb = (TextBox)sender;
+                tb.GetBindingExpression(TextBox.TextProperty).UpdateSource();
+            }
+            catch
+            {
+                //nothin to do
+            }
         }
-        */
-        
+
+        // Update if ENTER key has been pressed
+        public void KeyUpHander(object sender, KeyEventArgs e)
+        {
+            try
+            {
+                TextBox tb = (TextBox)sender;
+                if (e.Key == Key.Enter)
+                {
+                    tb.GetBindingExpression(TextBox.TextProperty).UpdateSource();
+                }
+            }
+            catch
+            {
+                //nothin to do
+            }
+                
+        }
     }
 }

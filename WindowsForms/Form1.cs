@@ -445,49 +445,6 @@ namespace HID_PnP_Demo
                     // Nothing to do
                     break;
             }
-
-            /*
-            if (myHidUtility.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
-            {
-                //Device is connected and ready to communicate, enable user interface on the form 
-                StatusText.Text = "Device Found: AttachedState = TRUE";
-                AnalogLabel.Enabled = true;
-                ToggleLedButton.Enabled = true;
-            }
-            else if ()
-            if ((myHidUtility.getAttachedState() == false) || (myHidUtility.getAttachedButBroken() == true))
-            {
-                //Device not available to communicate. Disable user interface on the form.
-                PushbuttonText.Text = "Device Not Detected: Verify Connection/Correct Firmware";
-                AnalogLabel.Enabled = false;
-                ToggleLedButton.Enabled = false;
-                //Update list of attached devices
-                //int deviceCount = myHidUtility.ScanDevices();
-
-                PushbuttonText.Text = "Pushbutton State: Unknown";
-                //myHidUtility.setADCValue(0);
-                AdcValue = 0;
-                AnalogBar.Value = 0;
-            }
-            if ((myHidUtility.getAttachedState() == false) && (myHidUtility.getAttachedButBroken() == true))
-            {
-                PushbuttonText.Text = "Device found but not working";
-            }
-
-            //Update the various status indicators on the form with the latest info obtained from the ReadWriteThread()
-            if (myHidUtility.getAttachedState() == true)
-            {
-                //Update the pushbutton state label.
-                if (PushbuttonPressed == false)
-                    PushbuttonText.Text = "Pushbutton State: Not Pressed";		//Update the pushbutton state text label on the form, so the user can see the result 
-                else
-                    PushbuttonText.Text = "Pushbutton State: Pressed";			//Update the pushbutton state text label on the form, so the user can see the result 
-                if(ToggleLedPending)
-                    PushbuttonText.Text += ", LED toggle pending";
-                //Update the ANxx/POT Voltage indicator value (progressbar)
-                AnalogBar.Value = (int) AdcValue;
-            }
-            */
         }
     } //public partial class Form1 : Form
 } //namespace HID_PnP_Demo
