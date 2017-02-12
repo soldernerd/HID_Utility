@@ -1,7 +1,7 @@
-﻿<Application x:Class="PositionCorrections.App"
+﻿<Application x:Class="HidDemoWpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:PositionCorrections"
+             xmlns:local="clr-namespace:HidDemoWpf"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
 

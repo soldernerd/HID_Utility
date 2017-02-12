@@ -104,7 +104,7 @@ namespace hid
 
         public Device(ManagementObject wmi_obj)
         {
-            this.DeviceID = wmi_obj["DeviceID"].ToString();
+            this.DeviceID = wmi_obj["DeviceID"].ToString().ToUpper();
             this.ClassGuid = wmi_obj["ClassGuid"].ToString();
             this.Caption = wmi_obj["Caption"].ToString();
             this.Manufacturer = wmi_obj["Manufacturer"].ToString();
@@ -398,7 +398,6 @@ namespace hid
             await Task.Yield();
             //Get a list with the device IDs of all removed devices
             List<string> NewDeviceIdList = getDeviceIdList();
-            //List<string> RemovedDeviceIdList = (List<string>)DeviceIdList.Except(NewDeviceIdList);
             List<string> RemovedDeviceIdList = new List<string>();
             foreach(string devId in DeviceIdList)
             {
@@ -407,27 +406,37 @@ namespace hid
                     RemovedDeviceIdList.Add(devId);
                 }
             }
-            //Loop through all devices in reverse order (we can't remove items inside a foreach() loop)
-            for (int i = DeviceList.Count - 1; i >= 0; i--)
+            //Get removed devices
+            List<Device> RemovedDeviceList = new List<Device>();
+            foreach(Device dev in DeviceList)
             {
-                //Check if device is in the list of removed devices
-                if (RemovedDeviceIdList.Contains(DeviceList[i].DeviceID))
+                if(RemovedDeviceIdList.Contains(dev.DeviceID))
                 {
-                    //Remove device from DeviceList
-                    DeviceList.RemoveAt(i);
-                    //Remove deviceId from DeviceIdList
-                    DeviceIdList.Remove(DeviceList[i].DeviceID);
-                    //Raise event if there are any subscribers
-                    if (RaiseDeviceRemovedEvent != null)
-                    {
-                        RaiseDeviceRemovedEvent(this, DeviceList[i]);
-                    }
+                    RemovedDeviceList.Add(dev);
+                }
+            }
+            //Loop through removed devices
+            foreach(Device removedDevice in RemovedDeviceList)
+            {
+                //Remove removedDevice from DeviceList
+                DeviceList.Remove(removedDevice);
+                //Remove removedDevice's device ID from DeviceIdList
+                DeviceIdList.Remove(removedDevice.DeviceID);
+                //Raise event if there are any subscribers
+                if (RaiseDeviceRemovedEvent != null)
+                {
+                    RaiseDeviceRemovedEvent(this, removedDevice);
                 }
             }
             // Check if our device has been disconnected
             if (ConnectionStatus != UsbConnectionStatus.Disconnected)
             {
-                SelectDevice(DeviceToConnectTo);
+                String DevicePath = GetDevicePath(this.DeviceToConnectTo);
+                // Try to connect if a device path has been obtained
+                if (DevicePath == null)
+                {
+                    CloseDevice();
+                }
             }
         }
 
@@ -435,30 +444,16 @@ namespace hid
         {
             // Return immediately and do all the work asynchronously
             await Task.Yield();
-            // Get a list with the device IDs of all removed devices
-            List<string> NewDeviceIdList = getDeviceIdList();
-            List<string> AddedDeviceIdList = new List<string>();
-            foreach (string devId in NewDeviceIdList)
-            {
-                if (!DeviceIdList.Contains(devId))
-                {
-                    AddedDeviceIdList.Add(devId);
-                }
-            }
-            // Get more information
-            List<Device> NewDeviceList = getDeviceList();
-            // Loop through all devices
+            // Loop through devices
+            List <Device> NewDeviceList = getDeviceList();
             foreach(Device dev in NewDeviceList)
             {
-                // Check if device is in the list of added devices
-                if (AddedDeviceIdList.Contains(dev.DeviceID))
+                if(!(DeviceIdList.Contains(dev.DeviceID)))
                 {
-                    // Add device to DeviceList
-                    DeviceList.Add(dev);
-                    // Add deviceId to DeviceIdList
                     DeviceIdList.Add(dev.DeviceID);
+                    DeviceList.Add(dev);
                     // Raise event if there are any subscribers
-                    if (RaiseDeviceRemovedEvent != null)
+                    if (RaiseDeviceAddedEvent!=null)
                     {
                         RaiseDeviceAddedEvent(this, dev);
                     }
@@ -544,7 +539,8 @@ namespace hid
                 {
                     string devId = match.Groups[1].Value;
                     devId = devId.Replace(@"\\", @"\");
-                    if(devId.Substring(0,3).ToUpper()=="HID")
+                    devId = devId.ToUpper();
+                    if(devId.Substring(0,3)=="HID")
                     {
                         deviceIDs.Add(devId);
                     }

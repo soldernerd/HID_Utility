@@ -59,7 +59,12 @@ namespace HidDemoWpf
             {
                 //nothin to do
             }
-                
+        }
+
+        //Scroll to bottom when text is changed
+        public void ActivityLogTextChangedHandler(object sender, EventArgs e)
+        {
+            ActivityLogScrollViewer.ScrollToBottom();
         }
     }
 }

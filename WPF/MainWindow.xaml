@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:HidDemoWpf"
         mc:Ignorable="d"
-        Title="HID Demo WPF" Height="630" Width="610" MinWidth="610" MinHeight="630">
+        Title="HID Demo WPF" Height="700" Width="610" MinWidth="610" MinHeight="700">
 
     <Window.Resources>
         <local:CommunicatorViewModel x:Key="CommunicatorVM"/>
@@ -13,17 +13,17 @@
 
     <Grid Width="Auto" HorizontalAlignment="Left" VerticalAlignment="Top">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*" />
+            <ColumnDefinition MinWidth="590" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="100" />
-            <RowDefinition Height="150" />
-            <RowDefinition Height="200" />
-            <RowDefinition Height="150" />
+            <RowDefinition MinHeight="100" />
+            <RowDefinition MinHeight="150" />
+            <RowDefinition MinHeight="250" />
+            <RowDefinition MinHeight="150" />
         </Grid.RowDefinitions>
 
         <!-- Row 0 -->
-        <GroupBox Header="Vendor ID and Product ID of the Device" Name="VidPid_GroupBox" Grid.Column="0" Grid.Row="0" Height="80" Width="580" Margin="10,10,10,10">
+        <GroupBox Header="Vendor ID and Product ID of the Device" Name="VidPid_GroupBox" Grid.Column="0" Grid.Row="0" Margin="10,10,10,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*" />
@@ -43,12 +43,14 @@
             </Grid>
         </GroupBox>
         <!-- Row 1 -->
-        <GroupBox Header="Attached Devices" Name="AttachedDevices_GroupBox" Grid.Column="0" Grid.Row="1" Height="130" Width="580" Margin="10,10,10,10">
-            <TextBox Name="AttachedDevices_TextBox" Text="{Binding DeviceListTxt, Mode=OneWay, Source={StaticResource CommunicatorVM}}" IsEnabled="True" IsReadOnly="True" Background="WhiteSmoke" Margin="10,10,10,10"></TextBox>
+        <GroupBox Header="Attached Devices" Name="AttachedDevices_GroupBox" Grid.Column="0" Grid.Row="1" Margin="10,10,10,10">
+            <ScrollViewer Name="DeviceListScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <TextBox Name="AttachedDevices_TextBox" Text="{Binding DeviceListTxt, Mode=OneWay, Source={StaticResource CommunicatorVM}}" IsEnabled="True" IsReadOnly="True" Background="WhiteSmoke" Margin="10,10,10,10"></TextBox>
+            </ScrollViewer>
         </GroupBox>
         
         <!-- Row 2 -->
-        <GroupBox Header="Communication" Name="Communication_GroupBox" Grid.Column="0" Grid.Row="2" Height="180" Width="580" Margin="10,10,10,10">
+        <GroupBox Header="Communication" Name="Communication_GroupBox" Grid.Column="0" Grid.Row="2" Margin="10,10,10,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*" />
@@ -111,9 +113,11 @@
         </GroupBox>
 
         <!-- Row 3 -->
-        <GroupBox Header="Activity Logging" Name="ActivityLogging_GroupBox" Grid.Column="0" Grid.Row="3" Height="130" Width="580" Margin="10,5">
-            <TextBox Name="ActivityLogging_TextBox" IsEnabled="True" Background="WhiteSmoke" Margin="10,10,10,10" 
+        <GroupBox Header="Activity Logging" Name="ActivityLogging_GroupBox" Grid.Column="0" Grid.Row="3" Margin="10,10,10,10">
+            <ScrollViewer Name="ActivityLogScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <TextBox Name="ActivityLogging_TextBox" TextChanged="ActivityLogTextChangedHandler" IsEnabled="True" Background="WhiteSmoke" Margin="10,10,10,10" 
                 Text="{Binding ActivityLogTxt, Mode=OneWay, Source={StaticResource CommunicatorVM}}"/>
+            </ScrollViewer>
         </GroupBox>
 
     </Grid>

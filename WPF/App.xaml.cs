@@ -164,6 +164,14 @@ namespace HidDemoWpf
             {
                 WaitingForDevice = OutBuffer.TransferSuccessful;
             }
+            if (OutBuffer.TransferSuccessful)
+            {
+                ++TxCount;
+            }
+            else
+            {
+                ++TxFailedCount;
+            }
         }
 
         // HidUtility asks if a packet should be requested from the device
@@ -300,8 +308,6 @@ namespace HidDemoWpf
                 PropertyChanged(this, new PropertyChangedEventArgs("PushbuttonContentTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("LedTogglePendingTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
-                //debug
-                PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceColor"));
             }
         }
 
@@ -317,7 +323,11 @@ namespace HidDemoWpf
         {
             get
             {
-                return communicator.RequestLedToggleValid();
+                if(communicator.HidUtil.ConnectionStatus==HidUtility.UsbConnectionStatus.Connected)
+                {
+                    return communicator.RequestLedToggleValid();
+                }
+                return false;
             }
         }
 
@@ -345,7 +355,19 @@ namespace HidDemoWpf
 
         public void TimerTickHandler(object sender, EventArgs e)
         {
+
             PropertyChanged(this, new PropertyChangedEventArgs("UptimeTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("LedToggleActive"));
+            PropertyChanged(this, new PropertyChangedEventArgs("PushbuttonContentTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("PushbuttonStatusTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("AdcValue"));
+            PropertyChanged(this, new PropertyChangedEventArgs("TxSuccessfulTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("TxFailedTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("RxSuccessfulTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("RxFailedTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("TxSpeedTxt"));
+            PropertyChanged(this, new PropertyChangedEventArgs("RxSpeedTxt"));
+            
         }
 
         public void DeviceAddedEventHandler(object sender, Device dev)
@@ -378,10 +400,8 @@ namespace HidDemoWpf
                     ConnectedTimestamp = DateTime.Now;
                     break;
                 case HidUtility.UsbConnectionStatus.Disconnected:
-                    // do nothing
                     break;
                 case HidUtility.UsbConnectionStatus.NotWorking:
-                    // do nothing
                     break;
             }
             if (PropertyChanged != null)
@@ -391,6 +411,9 @@ namespace HidDemoWpf
                 PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
                 PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceActive"));
                 PropertyChanged(this, new PropertyChangedEventArgs("UserInterfaceColor"));
+                PropertyChanged(this, new PropertyChangedEventArgs("LedToggleActive"));
+                PropertyChanged(this, new PropertyChangedEventArgs("PushbuttonContentTxt"));
+                PropertyChanged(this, new PropertyChangedEventArgs("AdcValue"));
             }
         }
 
@@ -511,7 +534,7 @@ namespace HidDemoWpf
         {
             get
             {
-                if(true || communicator.HidUtil.ConnectionStatus==HidUtility.UsbConnectionStatus.Connected)
+                if(communicator.HidUtil.ConnectionStatus==HidUtility.UsbConnectionStatus.Connected)
                 {
                     //Save time elapsed since the device was connected
                     TimeSpan uptime = DateTime.Now - ConnectedTimestamp;
@@ -530,9 +553,9 @@ namespace HidDemoWpf
             get
             {
                 if (communicator.HidUtil.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
-                    return string.Format("Successfully sent: {0}", communicator.TxCount);
+                    return string.Format("Sent: {0}", communicator.TxCount);
                 else
-                    return "Successfully sent: -";
+                    return "Sent: -";
             }            
         }
 
@@ -554,9 +577,9 @@ namespace HidDemoWpf
             get
             {
                 if (communicator.HidUtil.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
-                    return string.Format("Successfully received: {0}", communicator.RxCount);
+                    return string.Format("Received: {0}", communicator.RxCount);
                 else
-                    return "Successfully received: -";
+                    return "Receied: -";
             }
         }
 
