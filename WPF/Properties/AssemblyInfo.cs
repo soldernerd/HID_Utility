@@ -7,12 +7,11 @@ using System.Windows;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("PositionCorrections")]
+[assembly: AssemblyTitle("HidUtilityDemo")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Bank Vontobel AG")]
-[assembly: AssemblyProduct("PositionCorrections")]
-[assembly: AssemblyCopyright("Copyright © Bank Vontobel AG 2017")]
+[assembly: AssemblyCompany("Soldernerd.com")]
+[assembly: AssemblyProduct("HidUtilityDemo")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

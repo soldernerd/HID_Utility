@@ -439,7 +439,7 @@ namespace HidDemoWpf
                     string devString = string.Format("VID=0x{0:X4} PID=0x{1:X4}: {2} ({3})", dev.Vid, dev.Pid, dev.Caption, dev.Manufacturer);
                     txt += devString + Environment.NewLine;
                 }
-                return txt.TrimEnd('\n');
+                return txt.TrimEnd();
             }
         }
 
@@ -506,6 +506,9 @@ namespace HidDemoWpf
             set
             {
                 communicator.Vid = ParseHex(value);
+                string log = string.Format("Trying to connect (VID=0x{0:X4} PID=0x{1:X4})", communicator.Vid, communicator.Pid);
+                WriteLog(log, false);
+                PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
             }
         }
 
@@ -518,6 +521,9 @@ namespace HidDemoWpf
             set
             {
                 communicator.Pid = ParseHex(value);
+                string log = string.Format("Trying to connect (VID=0x{0:X4} PID=0x{1:X4})", communicator.Vid, communicator.Pid);
+                WriteLog(log, false);
+                PropertyChanged(this, new PropertyChangedEventArgs("ActivityLogTxt"));
             }
         }
 
@@ -598,9 +604,12 @@ namespace HidDemoWpf
         {
             get
             {
-                if (communicator.TxCount != 0)
+                if (communicator.HidUtil.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
                 {
-                    return string.Format("TX Speed: {0:0.00} packets per second", communicator.TxCount / (DateTime.Now - ConnectedTimestamp).TotalSeconds);
+                    if (communicator.TxCount != 0)
+                    {
+                        return string.Format("TX Speed: {0:0.00} packets per second", communicator.TxCount / (DateTime.Now - ConnectedTimestamp).TotalSeconds);
+                    }
                 }
                 return "TX Speed: n/a";
             }
@@ -610,9 +619,12 @@ namespace HidDemoWpf
         {
             get
             {
-                if (communicator.TxCount != 0)
+                if (communicator.HidUtil.ConnectionStatus == HidUtility.UsbConnectionStatus.Connected)
                 {
-                    return string.Format("RX Speed: {0:0.00} packets per second", communicator.TxCount / (DateTime.Now - ConnectedTimestamp).TotalSeconds);
+                    if (communicator.TxCount != 0)
+                    {
+                        return string.Format("RX Speed: {0:0.00} packets per second", communicator.TxCount / (DateTime.Now - ConnectedTimestamp).TotalSeconds);
+                    }
                 }
                 return "RX Speed: n/a";
             }
