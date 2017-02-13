@@ -17,9 +17,10 @@ All the heavy lifting is done in a common file named hid.cs. It can be included 
 
 hid.cs offers a nice, truely C# interface that lets you communicate to HID devices. Basically all you need to do is to create an instance of HidUtility and subscribe to the events you're interested in. The 3 applications should give you a good starting point.
 
-More information is available on soldernerd.com
+More information is available on https://soldernerd.com/2017/02/14/c-usb-hid-utility/
 
 Lukas Fässler
+soldernerd.com
 2017-02-13
 
 
