@@ -1,5 +1,5 @@
 
-namespace HID_PnP_Demo
+namespace HidDemoWindowsForms
 {
     partial class Form1
     {
@@ -372,7 +372,7 @@ namespace HID_PnP_Demo
             this.Controls.Add(this.StatusText);
             this.Controls.Add(this.AnalogBar);
             this.Name = "Form1";
-            this.Text = "HID PnP Demo";
+            this.Text = "HID Demo WindowsForms";
             this.ResumeLayout(false);
             this.PerformLayout();
 

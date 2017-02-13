@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Windows.Forms;
 using hid;
 
-namespace HID_PnP_Demo
+namespace HidDemoWindowsForms
 {
     public partial class Form1 : Form
     {
@@ -100,7 +100,35 @@ namespace HID_PnP_Demo
                 RxCountText.Text = "Packets received (failed): -";
                 RxSpeedText.Text = "RX Speed: n/a";
             }
+        }
 
+        // Update Pushbutton status
+        private void UpdatePushbutton()
+        {
+            string tmp;
+            if (PushbuttonPressed)
+            {
+                tmp = "Pushbuttton State: Pressed";
+            }
+            else
+            {
+                tmp = "Pushbuttton State: Pressed";
+            }
+            // Only update if value has changed. Otherwise the text will flicker
+            if (PushbuttonText.Text != tmp)
+            {
+                PushbuttonText.Text = tmp;
+            }
+        }
+
+        //Update ADC bar
+        private void UpdateAdcBar()
+        {
+            // Ui operations are relatively costly so only update if the value has changed
+            if (AnalogBar.Value != (int)AdcValue)
+            {
+                AnalogBar.Value = (int)AdcValue;
+            }
         }
 
         //Enable or disable controls
@@ -278,6 +306,8 @@ namespace HID_PnP_Demo
                     break;
             }
             UpdateStatistics();
+            UpdatePushbutton();
+            UpdateAdcBar();
         }
 
         // HidUtility asks if a packet should be sent to the device
@@ -356,28 +386,17 @@ namespace HID_PnP_Demo
             {
                 //Need to reformat the data from two unsigned chars into one unsigned int.
                 AdcValue = (uint)(InBuffer.buffer[3] << 8) + InBuffer.buffer[2];
-                if (AnalogBar.Value != (int)AdcValue)
-                {
-                    AnalogBar.Value = (int)AdcValue;
-                }
             }
             if (InBuffer.buffer[1] == 0x81)
             {
-                string tmp = "";
                 if (InBuffer.buffer[2] == 0x01)
                 {
                     PushbuttonPressed = false;
-                    tmp = "Pushbuttton State: Not pressed";
                 }
                 if (InBuffer.buffer[2] == 0x00)
                 {
                     PushbuttonPressed = true;
-                    tmp = "Pushbuttton State: Pressed";
                 }
-                if (PushbuttonText.Text != tmp)
-                {
-                    PushbuttonText.Text = tmp;
-                }  
             }
             if (InBuffer.TransferSuccessful)
             {
@@ -437,6 +456,8 @@ namespace HID_PnP_Demo
             {
                 case HidUtility.UsbConnectionStatus.Connected:
                     UpdateStatistics();
+                    UpdatePushbutton();
+                    UpdateAdcBar();
                     break;
                 case HidUtility.UsbConnectionStatus.Disconnected:
                     // Nothing to do
@@ -447,4 +468,4 @@ namespace HID_PnP_Demo
             }
         }
     } //public partial class Form1 : Form
-} //namespace HID_PnP_Demo
+} //namespace HidDemoWindowsForms

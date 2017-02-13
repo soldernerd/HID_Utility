@@ -49,6 +49,8 @@ namespace HidDemoConsole
             HidUtil.SelectDevice(new Device(Vid, Pid));
 
             // Subscribe to events
+            HidUtil.RaiseDeviceRemovedEvent += DeviceRemovedHandler;
+            HidUtil.RaiseDeviceAddedEvent += DeviceAddedHandler;
             HidUtil.RaiseConnectionStatusChangedEvent += ConnectionStatusChangedHandler;
             HidUtil.RaiseSendPacketEvent += SendPacketHandler;
             HidUtil.RaisePacketSentEvent += PacketSentHandler;
@@ -68,6 +70,20 @@ namespace HidDemoConsole
             Console.WriteLine("  r, read: Read ADC value and pushbutton status");
             Console.WriteLine("  t, toggle: Toggle LED");
             Console.WriteLine("  q, quit: Exit the application");
+        }
+
+        // A USB device has been removed
+        // Update the event log and device list
+        void DeviceRemovedHandler(object sender, Device dev)
+        {
+            Console.WriteLine(string.Format("Device removed: {0}", dev.ToString()));
+        }
+
+        // A USB device has been added
+        // Update the event log and device list
+        void DeviceAddedHandler(object sender, Device dev)
+        {
+            Console.WriteLine(string.Format("Device added: {0}", dev.ToString()));
         }
 
         // Connection status of our selected device has changed

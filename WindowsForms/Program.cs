@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace HID_PnP_Demo
+namespace HidDemoWindowsForms
 {
     static class Program
     {
