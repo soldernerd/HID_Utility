@@ -10,7 +10,7 @@ namespace HID_PnP_Demo
     public partial class Form1 : Form
     {
         // An instance of HidUtility that will do all the heavy lifting
-        HidUtility myHidUtility;
+        HidUtility HidUtil;
 
         // The device we are currently connected to
         Device ConnectedDevice = null;
@@ -41,7 +41,7 @@ namespace HID_PnP_Demo
         private void RefreshDeviceList()
         {
             string txt = "";
-            foreach (Device dev in myHidUtility.DeviceList)
+            foreach (Device dev in HidUtil.DeviceList)
             {
                 string devString = string.Format("VID=0x{0:X4} PID=0x{1:X4}: {2} ({3})", dev.Vid, dev.Pid, dev.Caption, dev.Manufacturer);
                 txt += devString + Environment.NewLine;
@@ -51,7 +51,7 @@ namespace HID_PnP_Demo
 
         private void UpdateStatistics()
         {
-            if(myHidUtility.ConnectionStatus== HidUtility.UsbConnectionStatus.Connected)
+            if(HidUtil.ConnectionStatus== HidUtility.UsbConnectionStatus.Connected)
             {
                 //Save time elapsed since the device was connected
                 TimeSpan uptime = DateTime.Now - ConnectedTimestamp;
@@ -191,7 +191,7 @@ namespace HID_PnP_Demo
                 VID = vid;
                 // Try to connect using the new PID
                 WriteLog(string.Format("Attempt to connect with Vid=0x{0:X4}, Pid=0x{1:X4}", VID, PID), false);
-                myHidUtility.SelectDevice(new Device(VID, PID));
+                HidUtil.SelectDevice(new Device(VID, PID));
             }
             // Nicely format the string
             VidTextBox.Text = string.Format("0x{0:X4}", VID);
@@ -218,7 +218,7 @@ namespace HID_PnP_Demo
                 PID = pid;
                 // Try to connect using the new PID
                 WriteLog(string.Format("Attempt to connect with Vid=0x{0:X4}, Pid=0x{1:X4}", VID, PID), false);
-                myHidUtility.SelectDevice(new Device(VID, PID));
+                HidUtil.SelectDevice(new Device(VID, PID));
             }
             // Nicely format the string
             PidTextBox.Text = string.Format("0x{0:X4}", pid);
@@ -395,19 +395,19 @@ namespace HID_PnP_Demo
             InitializeComponent();
 
             // Get an instance of HidUtility
-            myHidUtility = new HidUtility();
+            HidUtil = new HidUtility();
 
             // Initialize user interface
             SetUserInterfaceStatus(false);
 
             // Register event handlers
-            myHidUtility.RaiseDeviceRemovedEvent += DeviceRemovedHandler;
-            myHidUtility.RaiseDeviceAddedEvent += DeviceAddedHandler;
-            myHidUtility.RaiseConnectionStatusChangedEvent += ConnectionStatusChangedHandler;
-            myHidUtility.RaiseSendPacketEvent += SendPacketHandler;
-            myHidUtility.RaisePacketSentEvent += PacketSentHandler;
-            myHidUtility.RaiseReceivePacketEvent += ReceivePacketHandler;
-            myHidUtility.RaisePacketReceivedEvent += PacketReceivedHandler;
+            HidUtil.RaiseDeviceRemovedEvent += DeviceRemovedHandler;
+            HidUtil.RaiseDeviceAddedEvent += DeviceAddedHandler;
+            HidUtil.RaiseConnectionStatusChangedEvent += ConnectionStatusChangedHandler;
+            HidUtil.RaiseSendPacketEvent += SendPacketHandler;
+            HidUtil.RaisePacketSentEvent += PacketSentHandler;
+            HidUtil.RaiseReceivePacketEvent += ReceivePacketHandler;
+            HidUtil.RaisePacketReceivedEvent += PacketReceivedHandler;
 
             // Fill the PID and VID text boxes
             VidTextBox.Text = string.Format("0x{0:X4}", VID);
@@ -426,14 +426,14 @@ namespace HID_PnP_Demo
             WriteLog("System started", true);
 
             // Initial attempt to connect
-            myHidUtility.SelectDevice(new hid.Device(VID, PID));
+            HidUtil.SelectDevice(new hid.Device(VID, PID));
         } //Form1()
 
 
         private void FormUpdateTimer_Tick(object sender, EventArgs e)
         {
             // Update user interface based on the attachment state of the USB device.
-            switch (myHidUtility.ConnectionStatus)
+            switch (HidUtil.ConnectionStatus)
             {
                 case HidUtility.UsbConnectionStatus.Connected:
                     UpdateStatistics();

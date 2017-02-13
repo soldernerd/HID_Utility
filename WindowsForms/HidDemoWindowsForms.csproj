@@ -84,7 +84,6 @@
   <ItemGroup>
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
-    <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />

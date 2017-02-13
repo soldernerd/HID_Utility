@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("HidDemoWindowsForms")]
+[assembly: AssemblyTitle("HidDemoConsole")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Soldernerd.com")]
-[assembly: AssemblyProduct("HidDemoWindowsForms")]
+[assembly: AssemblyProduct("HidDemoConsole")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("63f053db-de5b-4715-af73-ed2baaa1b5a8")]
+[assembly: Guid("42e80ef3-1acf-413e-9ac0-1d1daed560fa")]
 
 // Version information for an assembly consists of the following four values:
 //
@@ -28,5 +28,8 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
+// You can specify all the values or you can default the Build and Revision Numbers 
+// by using the '*' as shown below:
+// [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
