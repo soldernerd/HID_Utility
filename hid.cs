@@ -565,34 +565,6 @@ namespace hid
             return devices;
         }
 
-        /*
-        public List<Device> getDeviceList(ushort Vid, ushort Pid)
-        {
-            List<Device> devices = getDeviceList();
-            var qry = devices.Where(d => d.Pid == Pid && d.Vid == Vid);
-            List<Device> matchingDevices = new List<Device>();
-            foreach (Device dev in qry)
-            {
-                matchingDevices.Add(dev);
-            }
-            return matchingDevices;
-        }
-
-        public Device getDevice(ushort Pid, ushort Vid)
-        {
-            List<Device> devices = getDeviceList();
-            try
-            {
-                return devices.Where(d => d.Pid == Pid && d.Vid == Vid).Last();
-            }
-            catch
-            {
-                return null;
-            }
-        }
-        */
-
-        
         private String GetDevicePath(Device dev)
         {
             /*

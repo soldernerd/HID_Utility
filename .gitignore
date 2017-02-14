@@ -4,4 +4,4 @@
 Backup/*
 .git/*
 .vs/*
-*/Thumbs.db
+*.db
