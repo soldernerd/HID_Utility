@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net46</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Lukas Fässler</Authors>
+    <Company>soldernerd.com</Company>
+    <Product>HidUtility</Product>
+    <Description>A NuGet that allows a .NET application to communicate with a USB HID device in a simple and straight forward way without having to worry about all the COM objects and technical details. It's written in C# and mainly targets that language. It provides a main object, HidUtility, that one can use to subscribe to events such as when a package is received over USB or when a USB device is attached or detached.</Description>
+    <Copyright>GNU GPLv3</Copyright>
+    <PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.en.html</PackageLicenseUrl>
+    <PackageProjectUrl>https://soldernerd.com/2017/02/14/c-usb-hid-utility/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/soldernerd/HID_Utility</RepositoryUrl>
+    <ApplicationIcon />
+    <OutputType>Library</OutputType>
+    <StartupObject />
+    <Configurations>Release</Configurations>
+    <Platforms>AnyCPU;x86</Platforms>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="System.Management" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+
+</Project>

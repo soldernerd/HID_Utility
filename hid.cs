@@ -10,7 +10,7 @@ using System.Management;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace hid
+namespace HidUtilityNuget
 {
     internal static class UsbNotification
     {

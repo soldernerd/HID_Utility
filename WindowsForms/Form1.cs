@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
-using hid;
+using HidUtilityNuget;
 
 namespace HidDemoWindowsForms
 {
@@ -445,7 +445,7 @@ namespace HidDemoWindowsForms
             WriteLog("System started", true);
 
             // Initial attempt to connect
-            HidUtil.SelectDevice(new hid.Device(VID, PID));
+            HidUtil.SelectDevice(new HidUtilityNuget.Device(VID, PID));
         } //Form1()
 
 
